@@ -1,0 +1,9 @@
+
+version: '2'
+# /home/pi/photoDisplayer="/home/lewis/gitRepos/photoDisplayer/"
+services:
+
+  photo_orienter:
+    build: 
+      dockerfile: Dockerfile
+      context: .

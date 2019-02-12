@@ -1,0 +1,277 @@
+#! /usr/bin/env python
+
+import sqlite3
+from sqlite3 import Error
+import os
+import time
+import argparse
+import xmltodict
+import multithread_walk as mtw
+# UTF encoding for files
+import sys  
+reload(sys)
+sys.setdefaultencoding('utf8')
+
+class tableMinder:
+    """docstring for tableMinder"""
+    def __init__(self, params, print_inserts = True):
+        # super(tableMinder, self).__init__()
+        self.params = params
+
+        self.print_inserts = print_inserts
+
+        self.db_name = params['params']['db_name']
+        self.photo_table_name = params['params']['photo_table']['name']
+        self.full_path_col = params['params']['photo_table']['full_path_col']
+        self.reviewed_col = params['params']['photo_table']['reviewed_col']
+        self.action_taken_col = params['params']['photo_table']['action_taken_col']
+
+        self.param_table = params['params']['param_table']['name']
+        self.param_name = params['params']['param_table']['name_col']
+        self.param_val = params['params']['param_table']['val_col']
+
+        self.roots_table = params['params']['roots_table']['name']
+        self.roots_col = params['params']['roots_table']['root_col']
+
+        self.poss_actions = params['params']['possible_actions']
+        self.none_action = self.poss_actions['action_none']
+
+        # print self.poss_actions
+        self.poss_actions_list = [self.poss_actions[key] for key in self.poss_actions.keys()]
+
+        script_path  = os.path.abspath(os.path.join(__file__,".."))
+        self.conn = sqlite3.connect(os.path.join(script_path, self.db_name))
+        self.conn.text_factory = lambda x: unicode(x, "utf-8", "ignore")
+        self.conn.row_factory = lambda cursor, row: row[0]
+
+
+        # print "Reminder: Want to limit action_taken values when setting up table."
+
+    def add_from_roots(self):
+
+        get_roots_query = '''SELECT {root_col} FROM {root_tab_name}'''\
+        .format(root_tab_name =self.roots_table, root_col =self.roots_col)
+
+        cc = self.conn.cursor()
+        cc.execute(get_roots_query)
+
+        roots = cc.fetchall()
+
+        # print roots
+
+        paths = []
+        for eachRoot in roots:
+            for root, dirs, files in mtw.walk(eachRoot, threads=10):
+                # print len(files)
+                for f in files:
+                    if f.lower().endswith(tuple(['.jpg', '.jpeg'])):
+                        fullPath = os.path.join(root, f)
+                        paths.append(fullPath)
+                # print(len(paths))
+
+        # print(len(paths))
+
+        self.__insert_records_bulk__(paths)
+
+    def init_table(self):
+
+        cc = self.conn.cursor()
+
+        # Drop all tables that already exist. This seems to be more robust than
+        # using the table names from params for some reason.
+        name_query = '''SELECT name FROM sqlite_master WHERE type=\'table\''''
+        names = cc.execute(name_query).fetchall()
+
+        for table in names:
+            dropTable = '''DROP TABLE IF EXISTS {}'''.format(table)
+            cc.execute(dropTable)
+            self.conn.commit()
+
+        create_table = '''CREATE TABLE {tab_name} (
+            {full_path} STRING UNIQUE,
+            {reviewed} BOOLEAN NOT NULL CHECK ({reviewed} IN (0, 1) ),
+            {action_taken} STRING CHECK ({action_taken} IN ('{action_string}')) 
+        );'''.format(tab_name = self.photo_table_name, full_path = self.full_path_col, reviewed=self.reviewed_col, action_taken=self.action_taken_col,\
+            action_string='\', \''.join(self.poss_actions_list))
+        ## CHECK ({action_taken}) IN (0, 1, 2,...)
+
+        cc.execute(create_table)
+
+        create_param_table = '''CREATE TABLE {pt_name} (
+            {pm_name} STRING UNIQUE,
+            {pm_val}  STRING
+        );'''.format(pt_name=self.param_table, pm_name=self.param_name, pm_val=self.param_val)
+
+        cc.execute(create_param_table)
+
+        create_roots_table = '''CREATE TABLE {root_tab_name} ( 
+            {root_col} STRING UNIQUE
+        );'''.format(root_tab_name =self.roots_table, root_col =self.roots_col)
+        cc.execute(create_roots_table)
+
+        self.conn.commit()
+
+    def insert_root(self, root_path):
+
+        try:
+            utf_path = root_path.encode('utf-8')
+        except UnicodeDecodeError as ude:
+            utf_path = root_path
+
+        utf_path = u''+utf_path
+
+        utf_path = os.path.abspath(utf_path)
+
+        if not os.path.isdir(utf_path):
+            return False
+
+        insert_query = '''INSERT INTO {root_tab_name} ({root_col}) VALUES (?)'''\
+        .format(root_tab_name =self.roots_table, root_col =self.roots_col)
+
+        # print insert_query
+
+        try:
+            cc = self.conn.cursor()
+            cc.execute(insert_query, (utf_path,))
+            if self.print_inserts:
+                print("Inserted root {}".format(utf_path))
+        except sqlite3.IntegrityError as e:
+            pass
+            e = str(e)
+            if 'is not unique' in e or 'constraint failed' in e:
+                pass
+            else:
+                print("Integrity error: {}".format(e))
+
+        self.conn.commit()
+
+        
+    # def __insert_new_record__(self, full_path):
+
+    #     try:
+    #         utf_path = full_path.encode('utf-8')
+    #     except UnicodeDecodeError as ude:
+    #         utf_path = full_path
+
+    #     insert_query = '''INSERT INTO {tab_name} ({full_path_col}, {reviewed_col}, {action_taken_col}) VALUES (?, 0, '')'''\
+    #         .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col, action_taken_col=self.action_taken_col)
+
+    #     try:
+    #         cc = self.conn.cursor()
+    #         cc.execute(insert_query, (utf_path,))
+    #         print("Inserted file {}".format(full_path))
+    #     except sqlite3.IntegrityError as e:
+    #         e = str(e)
+    #         if 'is not unique' in e:
+    #             pass
+    #         else:
+    #             print("Integrity error: {}".format(e))
+                
+    #     self.conn.commit()
+
+    def __insert_records_bulk__(self, full_path_array):
+        i = 0
+        cc = self.conn.cursor()
+        for full_path in full_path_array:
+            i += 1
+            try:
+                utf_path = full_path.encode('utf-8')
+            except UnicodeDecodeError as ude:
+                utf_path = full_path
+
+            insert_query = '''INSERT INTO {tab_name} ({full_path_col}, {reviewed_col}, {action_taken_col}) VALUES (?, 0, '{none_action}')'''\
+                .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col, \
+                    action_taken_col=self.action_taken_col, none_action = self.none_action)
+
+            try:
+                cc.execute(insert_query, (utf_path,))
+                if self.print_inserts:
+                    print("Inserted file {}".format(utf_path))
+            except sqlite3.IntegrityError as e:
+                e = str(e)
+                if 'is not unique' in e or 'UNIQUE' in e:
+                    pass
+                else:
+                    print("Integrity error: {}".format(e))
+
+            if i % 1000 == 0:
+                self.conn.commit()
+
+        self.conn.commit()
+
+    def list_unprocessed(self):
+        select_query = '''SELECT {full_path_col} FROM {tab_name} WHERE {reviewed_col} = 0'''\
+        .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col)
+
+        c = self.conn.cursor()
+        files = c.execute(select_query).fetchall()
+
+        return files
+
+    def __net_action__(self, init_state, subsequent_action):
+
+        none_action = self.poss_actions['action_none']
+        clockwise_action = self.poss_actions['action_clockwise']
+        ccw_action = self.poss_actions['action_ccw']
+        r180_action = self.poss_actions['action_180']
+        delete_action = self.poss_actions['action_delete']
+
+        action_dict = {none_action:0, 
+                       ccw_action:-1,
+                       clockwise_action:1,
+                       r180_action:2,
+                       delete_action:0}
+
+        net_action = action_dict[init_state] + action_dict[subsequent_action] 
+        
+        # Rescale it to 0-3, where we can use a mod to wrap around, then subtract
+        # back out. 
+        net_action = (net_action + 1) % 4 - 1
+        # print "{} + {} = {}".format(action_dict[init_state], action_dict[subsequent_action], net_action)
+
+        if subsequent_action == delete_action:
+            out_state = delete_action
+        elif subsequent_action == none_action:
+            out_state = init_state
+        else:
+            if net_action == 0:
+                out_state = none_action
+            elif net_action == 1:
+                out_state = clockwise_action
+            elif net_action == 2:
+                out_state = r180_action
+            elif net_action == -1:
+                out_state = ccw_action
+            else:
+                raise ValueError("Action summation does not make sense!")
+
+        return out_state
+
+    def mark_processed(self, full_path, action=None):
+
+        try:
+            utf_path = full_path.encode('utf-8')
+        except UnicodeDecodeError as ude:
+            utf_path = full_path
+
+        if action is not None:
+            action_taken_subquery = ''', {action_taken_col}=\'{action}\' '''.format(action_taken_col = self.action_taken_col, action=action)
+        else:
+            action_taken_subquery = ''
+
+        update_query = '''UPDATE {tab_name} SET {reviewed_col}=1 {action_sq} WHERE {full_path_col}= ? '''\
+        .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col, action_sq=action_taken_subquery)
+
+        # print update_query
+        # print utf_path
+
+        try:
+            c = self.conn.cursor()
+            c.execute(update_query, (utf_path,))
+            if self.print_inserts:
+                print("Updated file {}".format(utf_path))
+        except sqlite3.IntegrityError as e:
+            e = str(e)
+            print("Integrity error: {}. File \"{}\" not updated.".format(e, utf_path))
+
+        self.conn.commit()
