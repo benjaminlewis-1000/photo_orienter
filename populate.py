@@ -128,8 +128,6 @@ class tableMinder:
         insert_query = '''INSERT INTO {root_tab_name} ({root_col}) VALUES (?)'''\
         .format(root_tab_name =self.roots_table, root_col =self.roots_col)
 
-        # print insert_query
-
         try:
             cc = self.conn.cursor()
             cc.execute(insert_query, (utf_path,))
@@ -144,30 +142,6 @@ class tableMinder:
                 print("Integrity error: {}".format(e))
 
         self.conn.commit()
-
-        
-    # def __insert_new_record__(self, full_path):
-
-    #     try:
-    #         utf_path = full_path.encode('utf-8')
-    #     except UnicodeDecodeError as ude:
-    #         utf_path = full_path
-
-    #     insert_query = '''INSERT INTO {tab_name} ({full_path_col}, {reviewed_col}, {action_taken_col}) VALUES (?, 0, '')'''\
-    #         .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col, action_taken_col=self.action_taken_col)
-
-    #     try:
-    #         cc = self.conn.cursor()
-    #         cc.execute(insert_query, (utf_path,))
-    #         print("Inserted file {}".format(full_path))
-    #     except sqlite3.IntegrityError as e:
-    #         e = str(e)
-    #         if 'is not unique' in e:
-    #             pass
-    #         else:
-    #             print("Integrity error: {}".format(e))
-                
-    #     self.conn.commit()
 
     def __insert_records_bulk__(self, full_path_array):
         i = 0
@@ -200,40 +174,58 @@ class tableMinder:
         self.conn.commit()
 
     def list_unprocessed(self):
+        # SQL query to get all the images that do not have the 'reviewed' flag
+        # set on them. 
         select_query = '''SELECT {full_path_col} FROM {tab_name} WHERE {reviewed_col} = 0'''\
         .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col)
 
+        # Get a cursor, fetch all into a list
         c = self.conn.cursor()
         files = c.execute(select_query).fetchall()
 
         return files
 
     def __net_action__(self, init_state, subsequent_action):
+        # Function that takes an initial state, a subsequent action,
+        # and defines what the new state should be.
 
+        # Define the allowable actions
         none_action = self.poss_actions['action_none']
         clockwise_action = self.poss_actions['action_clockwise']
         ccw_action = self.poss_actions['action_ccw']
         r180_action = self.poss_actions['action_180']
         delete_action = self.poss_actions['action_delete']
 
+        # If the action is none, then we make that 'none'
+        if subsequent_action == None:
+            subsequent_action = none_action
+
+        # Define a dictionary, so that we can use math rather than
+        # a nasty nested if-else tree. 
         action_dict = {none_action:0, 
                        ccw_action:-1,
                        clockwise_action:1,
                        r180_action:2,
                        delete_action:0}
 
+        # New action + old action = new action state. 
         net_action = action_dict[init_state] + action_dict[subsequent_action] 
         
         # Rescale it to 0-3, where we can use a mod to wrap around, then subtract
-        # back out. 
+        # back out. The math works. 
         net_action = (net_action + 1) % 4 - 1
-        # print "{} + {} = {}".format(action_dict[init_state], action_dict[subsequent_action], net_action)
 
+        # Special case - if we marked for deletion, then '0' means delete,
+        # not none. 
         if subsequent_action == delete_action:
             out_state = delete_action
+        # None means that we can skip the decision tree below. 
+        # Allows us to preserve 'deletes' when a 'none' is passed.
         elif subsequent_action == none_action:
             out_state = init_state
         else:
+            # Decision tree - decode the actions back to what's defined
+            # in the action dict. 
             if net_action == 0:
                 out_state = none_action
             elif net_action == 1:
@@ -249,22 +241,41 @@ class tableMinder:
 
     def mark_processed(self, full_path, action=None):
 
+        # Encode the path as a UTF-8 path
         try:
             utf_path = full_path.encode('utf-8')
         except UnicodeDecodeError as ude:
             utf_path = full_path
 
+        # Determine if the action is allowable -- otherwise return 'false'.
+        if action not in self.poss_actions_list and action is not None:
+            return False
+
+        # Get the current action stored in the table -- may be 'none'. 
+        get_path_query = '''SELECT {action_col} FROM {photo_table} WHERE {full_path_col} = ?'''\
+            .format(photo_table = self.photo_table_name, full_path_col = self.full_path_col, action_col = self.action_taken_col)
+
+        try:
+            c = self.conn.cursor()
+            currentAction = c.execute(get_path_query, (utf_path,)).fetchall()[0]
+        except sqlite3.IntegrityError as e:
+            e = str(e)
+            print("Integrity error: {}.".format(e, utf_path))
+
+        # Stored action + action taken = new net action
+        newStatus = self.__net_action__(currentAction, action)
+
+        # Build a subquery if the action wasn't 'None'. 
         if action is not None:
-            action_taken_subquery = ''', {action_taken_col}=\'{action}\' '''.format(action_taken_col = self.action_taken_col, action=action)
+            action_taken_subquery = ''', {action_taken_col}=\'{action}\' '''.format(action_taken_col = self.action_taken_col, action=newStatus)
         else:
             action_taken_subquery = ''
 
+        # Build the rest of the update query. Makes sure to set the reviewed column to 1. 
         update_query = '''UPDATE {tab_name} SET {reviewed_col}=1 {action_sq} WHERE {full_path_col}= ? '''\
         .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col, action_sq=action_taken_subquery)
 
-        # print update_query
-        # print utf_path
-
+        # Execute. Rely on the CHECK constraint on the table to reject some of the queries. 
         try:
             c = self.conn.cursor()
             c.execute(update_query, (utf_path,))

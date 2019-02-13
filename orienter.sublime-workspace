@@ -1,0 +1,474 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"realdl",
+				"real_tld_has_synth"
+			],
+			[
+				"autoen",
+				"autoencoder_content_loss_sr2"
+			],
+			[
+				"real_",
+				"real_train_data"
+			],
+			[
+				"int",
+				"intermediate"
+			],
+			[
+				"exc",
+				"exclude_targets"
+			],
+			[
+				"declin",
+				"sunDeclinationFromVertDeg"
+			],
+			[
+				"MODTR",
+				"MODTRAN_DATA"
+			],
+			[
+				"check",
+				"checkIfPointInFOV"
+			],
+			[
+				"two_",
+				"two_sigma_above"
+			],
+			[
+				"sor",
+				"sources_list"
+			],
+			[
+				"outpuT_gr",
+				"output_graph_synth"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"settings":
+			{
+				"buffer_size": 0,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "displayer.py",
+			"settings":
+			{
+				"buffer_size": 2260,
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 34.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"ren",
+				"Rename File"
+			],
+			[
+				"upd",
+				"Package Control: Upgrade Package"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"proje",
+				"Project Manager"
+			],
+			[
+				"project mana",
+				"Project Manager"
+			],
+			[
+				"project ",
+				"Project Manager"
+			],
+			[
+				"install p",
+				"Package Control: Install Package"
+			],
+			[
+				"package con",
+				"Package Control: Remove Package"
+			],
+			[
+				"insta",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 506.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/home/lewisbp/snippets/photo_orienter"
+	],
+	"file_history":
+	[
+		"/home/lewisbp/snippets/photo_orienter/orienter.sublime-project",
+		"/home/lewisbp/snippets/photo_orienter/orienter.sublime_project",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/original/discriminator.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/2019/sar_gan_alteration_spie/figures/mja_part_withheld_fig.tex",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/original/data.py",
+		"/home/lewisbp/gitRepos/SAMPLE_loaders/misc_classifier.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/generic_classifier_sample.py",
+		"/home/lewisbp/snippets/jpg_rotate/rotate.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/2019/sar_gan_alteration_spie/figures/acgan_fig_full.tex",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/2019/sar_gan_alteration_spie/figures/mja_full_img_fig.tex",
+		"/home/lewisbp/.config/sublime-text-3/Packages/User/Projects/SAR_ML_SPIE_2019.sublime-project",
+		"/home/lewisbp/gitRepos/SAMPLE_loaders/generic_classifier_sample.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/manifold_joining_ae.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/original/autoencoder.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/conv_ae.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/bookChapter/figures/plot_cms.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/simple_ae_class.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/output/compose.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/bookChapter/figures/make_gan_figure.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/pairedSAMPLEset.py",
+		"/home/lewisbp/gitRepos/SAMPLE_loaders/splitSet.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/conv_ae_orig.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/data.py",
+		"/home/lewisbp/gitRepos/TestHarness/simgan/simgan_class.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/autoencoder_alternating.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/testAE.sh",
+		"/home/lewisbp/gitRepos/TestHarness/dualgan/models.py",
+		"/home/lewisbp/gitRepos/TestHarness/dualgan/datasets.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/layer_retraining/dense_layers.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/bookChapter/numpy_files/vanilla_classification/plotresults.py",
+		"/home/lewisbp/gitRepos/TestHarness/dualgan/dualgan_pytorch.py",
+		"/home/lewisbp/gitRepos/SAMPLE_loaders/testClasses.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/splitSet.py",
+		"/home/lewisbp/gitRepos/imageFormationGUI/needToKnow.txt",
+		"/home/lewisbp/gitRepos/atr_projects_2018/ACGAN_PyTorch/ACGAN.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/ACGAN_PyTorch/network.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/classifier.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/discriminator.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/autoencoder.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/simgan/simgan.py",
+		"/home/lewisbp/gitRepos/imageFormationGUI/SAMPLE_generation/phClient.m",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/spie2019/SAR/sar_abstract.txt",
+		"/home/lewisbp/gitRepos/pytorch-saliency/real_time_saliency.py",
+		"/home/lewisbp/gitRepos/pytorch-saliency/test_black_box.py",
+		"/home/lewisbp/gitRepos/pytorch-saliency/saliency_eval.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/conv_ae_images/part_data/detector.py",
+		"/home/lewisbp/.config/sublime-text-3/Packages/rsub/rsub.sublime-settings",
+		"/home/lewisbp/gitRepos/SAMPLE_loaders/pairedSAMPLEset.py",
+		"/home/lewisbp/gitRepos/SAMPLE_loaders/class4_pairedDataset.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/AE_train.sh",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/bookChapter/numpy_files/vanilla_classification/disp_cm.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/IEEE_ICCAS/Papers/IEEE_ICASSP_2019/disp_cm.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/IEEE_ICCAS/Papers/IEEE_ICASSP_2019/plotresults.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/layer_retraining/conf_matrix_arbitrary.py",
+		"/tmp/rsub-o_ykc8/views.py",
+		"/tmp/rsub-twl750/tests.py",
+		"/tmp/rsub-rt58wu/models.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/layer_retraining/modifiedLeNet.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/layer_retraining/runAll.sh",
+		"/home/lewisbp/gitRepos/atr_projects_2018/layer_retraining/layer_train.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/layer_retraining/dataLoading.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/layer_retraining/testweights.py",
+		"/home/lewisbp/gitRepos/imageFormationGUI/theresa_paper/makePlots.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/IEEE_ICCAS/Papers/IEEE_ICASSP_2019/disp_bar.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/IEEE_ICCAS/Papers/IEEE_ICASSP_2019/benplots.py",
+		"/home/lewisbp/gitRepos/TestHarness/dualgan/__init__.py",
+		"/home/lewisbp/gitRepos/TestHarness/dualgan/ops.py",
+		"/home/lewisbp/gitRepos/TestHarness/dualgan/utils.py",
+		"/home/lewisbp/gitRepos/TestHarness/dualgan/dualGAN_model.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/IEEE_ICCAS/Papers/IEEE_ICASSP_2019/bib.bib",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/IEEE_ICCAS/Papers/IEEE_ICASSP_2019/spconf.sty",
+		"/home/lewisbp/gitRepos/imageFormationGUI/SAMPLE_generation/retrieveSynthData.m",
+		"/home/lewisbp/gitRepos/atr_projects_2018/torch_examples/monoLabelClassExample.py",
+		"/home/lewisbp/gitRepos/atr_projects_2018/Manifold_Autoencoder/S2R_Generate.py",
+		"/home/lewisbp/gitRepos/imageFormationGUI/SAMPLE_generation/ryap_pfa_orig.m",
+		"/home/lewisbp/gitRepos/imageFormationGUI/SAMPLE_generation/postProcessImg.m",
+		"/home/lewisbp/gitRepos/imageFormationGUI/SAMPLE_generation/saveImages.m",
+		"/home/lewisbp/gitRepos/imageFormationGUI/SAMPLE_generation/grubbs_test.m",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/bookChapter/bib.bib",
+		"/home/lewisbp/gitRepos/imageFormationGUI/SAMPLE_generation/processMSTARfile.m",
+		"/home/lewisbp/gitRepos/atr_projects_2018/paper_results/orig_no_holdout/vgg_sar.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/bookChapter/chapter.tex",
+		"/home/lewisbp/Downloads/bg.bib",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/bookChapter/chapter.",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/IEEE_ICCAS/Papers/IEEE_ICASSP_2019/IEEE_Conf_SAR_GAN.tex",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/spie2019/sar_abstract.txt",
+		"/home/lewisbp/gitRepos/atr_2018/BicycleGAN/scripts/train_SAR.sh",
+		"/home/lewisbp/gitRepos/atr_2018/BicycleGAN/README.txt",
+		"/home/lewisbp/gitRepos/atr_2018/ben_tests/vgg_sar.py",
+		"/home/lewisbp/BooksAndPapers/writtenPapers/IEEE_ICCAS/Papers/IEEE_ICASSP_2019/IEEE_Conf_SAR_GAN.log",
+		"/home/lewisbp/gitRepos/atr_2018/BicycleGAN/models/bicycle_gan_model.py",
+		"/home/lewisbp/realism/DG_SG_testharness/test_harness.py",
+		"/home/lewisbp/DATA/DIRSIG_experiments/multiRunDIRSIG/imGenQueue.py",
+		"/home/lewisbp/DATA/DIRSIG_experiments/enviToJpeg.py",
+		"/home/lewisbp/DATA/DIRSIG_experiments/Parking1/DIRSIG_Sample_Scene_edited/geometry/M113_A3_E3D_3_0_v3_M95_s1_v2_m_DIRSIG.obj",
+		"/home/lewisbp/DATA/DIRSIG_experiments/multiRunDIRSIG/buildScene.py",
+		"/home/lewisbp/gitRepos/TestHarness/dualgan/model2.py",
+		"/home/lewisbp/gitRepos/TestHarness/README.txt",
+		"/home/lewisbp/gitRepos/imageFormationGUI/dataMakerFunctions/ryap_pfa_orig.m",
+		"/home/lewisbp/gitRepos/TestHarness/classificationProcedure.py",
+		"/home/lewisbp/gitRepos/TestHarness/test_harness_2.py",
+		"/home/lewisbp/gitRepos/TestHarness/test_procedure.py",
+		"/home/lewisbp/gitRepos/TestHarness/README",
+		"/home/lewisbp/gitRepos/TestHarness/testScript",
+		"/home/lewisbp/gitRepos/TestHarness/test.test",
+		"/home/lewisbp/gitRepos/TestHarness/testVars.sh",
+		"/home/lewisbp/gitRepos/TestHarness/test.json",
+		"/home/lewisbp/gitRepos/TestHarness/sweep_submission.py",
+		"/home/lewisbp/gitRepos/TestHarness/submitted_combos.txt",
+		"/home/lewisbp/gitRepos/imageFormationCode/fastBpBasic.m",
+		"/home/lewisbp/gitRepos/photoDisplayer/pyInit/addPics.py",
+		"/home/lewisbp/gitRepos/photoDisplayer/pyInit/photoHandler.py",
+		"/home/lewisbp/gitRepos/photoDisplayer/pyInit/getExif.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/simgan/__init__.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/classifyMultiple.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/classificationProcedure.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/runClassify.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/testClassify.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/procedure_classes.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/testDG.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/makeDataset.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/test_harness_2.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/test_procedure.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/test_harness/model2.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/classTest.py",
+		"/C/Users/1517785756C/Desktop/DualGAN/classificationProcedure.py"
+	],
+	"find":
+	{
+		"height": 28.0
+	},
+	"find_in_files":
+	{
+		"height": 117.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 1,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 0,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"WordCount":
+							{
+								"changes": 0,
+								"count": 0,
+								"modified": false,
+								"selection": false,
+								"status": -1,
+								"syntax": "plain text"
+							},
+							"git_gutter_is_enabled": false,
+							"syntax": "Packages/Text/Plain text.tmLanguage"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "displayer.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2260,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								347,
+								347
+							]
+						],
+						"settings":
+						{
+							"WordCount":
+							{
+								"changes": -1,
+								"modified": true,
+								"selection": true,
+								"status": -1,
+								"syntax": "python"
+							},
+							"git_gutter_is_enabled": true,
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 28.0
+	},
+	"input":
+	{
+		"height": 45.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 133.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "orienter.sublime-project",
+	"replace":
+	{
+		"height": 52.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 500.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"",
+				"~/gitRepos/atr_projects_2018/book_chapter.sublime-project"
+			]
+		],
+		"width": 380.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 252.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

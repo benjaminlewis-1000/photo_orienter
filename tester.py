@@ -242,6 +242,63 @@ class test_populator(unittest.TestCase):
         unprocessed_list = self.db_class.list_unprocessed()
         self.assertEqual(start_length, len(unprocessed_list))
 
+    def test_sequence_of_actions(self):
+        self.db_class.insert_root(self.actual_test_dir)
+        self.db_class.add_from_roots()
+        unprocessed_list = self.db_class.list_unprocessed()
+
+
+        poss_actions = self.params['params']['possible_actions']
+        none_action = poss_actions['action_none']
+        clockwise_action = poss_actions['action_clockwise']
+        ccw_action = poss_actions['action_ccw']
+        r180_action = poss_actions['action_180']
+        delete_action = poss_actions['action_delete']
+
+        test_file = unprocessed_list[0]
+
+        def __get_net__():
+            get_path_query = '''SELECT {action_col} FROM {photo_table} WHERE {full_path_col} = ?'''\
+            .format(photo_table = self.db_class.photo_table_name, full_path_col = self.db_class.full_path_col,\
+             action_col = self.db_class.action_taken_col)
+
+            action_stored = self.cur.execute(get_path_query, (test_file,)).fetchall()[0]
+            return action_stored
+
+        self.db_class.mark_processed(test_file)
+        self.assertEqual(__get_net__(), none_action)
+        self.db_class.mark_processed(test_file, clockwise_action)
+        self.assertEqual(__get_net__(), clockwise_action)
+        self.db_class.mark_processed(test_file, clockwise_action)
+        self.assertEqual(__get_net__(), r180_action)
+        self.db_class.mark_processed(test_file, clockwise_action)
+        self.assertEqual(__get_net__(), ccw_action)
+        self.db_class.mark_processed(test_file, delete_action)
+        self.assertEqual(__get_net__(), delete_action)
+        self.db_class.mark_processed(test_file, r180_action)
+        self.assertEqual(__get_net__(), r180_action)
+        self.db_class.mark_processed(test_file, r180_action)
+        self.assertEqual(__get_net__(), none_action)
+        self.db_class.mark_processed(test_file, r180_action)
+        self.db_class.mark_processed(test_file, r180_action)
+        self.assertNotEqual(__get_net__(), delete_action)
+        self.db_class.mark_processed(test_file, r180_action)
+        self.db_class.mark_processed(test_file)
+        self.assertEqual(__get_net__(), r180_action)
+        self.db_class.mark_processed(test_file, r180_action)
+        self.db_class.mark_processed(test_file, ccw_action)
+        self.assertEqual(__get_net__(), ccw_action)
+        self.db_class.mark_processed(test_file, ccw_action)
+        self.assertEqual(__get_net__(), r180_action)
+        self.db_class.mark_processed(test_file, ccw_action)
+        self.assertEqual(__get_net__(), clockwise_action)
+        self.db_class.mark_processed(test_file, ccw_action)
+        self.assertEqual(__get_net__(), none_action)
+        self.db_class.mark_processed(test_file, delete_action)
+        self.assertEqual(__get_net__(), delete_action)
+        self.db_class.mark_processed(test_file, none_action)
+        self.assertEqual(__get_net__(), delete_action)
+
     def test_net_actions(self):
         poss_actions = self.params['params']['possible_actions']
 
