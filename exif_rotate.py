@@ -29,7 +29,7 @@ def rotate_file(filename, direction):
         orientation = orientation ^ 0b010
 
     orientation += 1 # Undo the 0-7
-    print orientation
+    # print(orientation)
     img.exif.primary.Orientation = [orientation]
 
     img.writeFile(filename)
@@ -38,8 +38,8 @@ if __name__ == "__main__":
     file = sys.argv[1]
     direction = sys.argv[2]
 
-    print file
-    print direction
+    print(file)
+    print(direction)
     rotate_file(file, direction)
 
 '''
