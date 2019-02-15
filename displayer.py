@@ -47,9 +47,7 @@ class keyLoggerDisplay():
         for file in self.list_of_files:
             self.next_files_q.put(file)
 
-        print(len(self.list_of_files))
         self.num_files = len(self.list_of_files)
-        print(self.list_of_files)
 
         if self.num_files == 0:
             exit()
@@ -185,21 +183,30 @@ class keyLoggerDisplay():
 
             elif item_char == 'd':
                 # Push to backward lists
-                backward_dict_list.append(current_img_object)
-                if len(backward_dict_list) > self.max_back_imgs:
-                    back_popped = backward_dict_list.popleft()
-                    back_file = back_popped['file']
-                    backward_files_list.append(back_file)
-                # Put the current file as processed.
-                self.db_q.put([current_img_object['file'], None])
 
+                def push_back():
+                    # A function that only pushes things back if we are 
+                    # actually progressing to a next image. 
+                    backward_dict_list.append(current_img_object)
+                    if len(backward_dict_list) > self.max_back_imgs:
+                        back_popped = backward_dict_list.popleft()
+                        back_file = back_popped['file']
+                        backward_files_list.append(back_file)
+                    self.db_q.put([current_img_object['file'], None])
+
+                next_loaded = False
                 if len(forward_dict_list) == 0:
                     if not self.loaded_imgs_q.empty():
+                        push_back()
                         current_img_object = self.loaded_imgs_q.get()
                     # else:
                     #     self.stop_event.set()
                 else:
+                    push_back()
                     current_img_object = forward_dict_list.popleft()
+
+
+                # Put the current file as processed.
                 
                 img = current_img_object['image']
                 cv2.imshow('image', img)
