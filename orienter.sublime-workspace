@@ -4,6 +4,10 @@
 		"selected_items":
 		[
 			[
+				"pos",
+				"poss_actions_list"
+			],
+			[
 				"realdl",
 				"real_tld_has_synth"
 			],
@@ -52,18 +56,30 @@
 	"buffers":
 	[
 		{
+			"file": "displayer.py",
 			"settings":
 			{
-				"buffer_size": 0,
+				"buffer_size": 2693,
+				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
 		},
 		{
-			"file": "displayer.py",
+			"file": "tester.py",
 			"settings":
 			{
-				"buffer_size": 2260,
-				"line_ending": "Unix"
+				"buffer_size": 16486,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "populate.py",
+			"settings":
+			{
+				"buffer_size": 11122,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
 			}
 		}
 	],
@@ -268,7 +284,7 @@
 	],
 	"find":
 	{
-		"height": 28.0
+		"height": 41.0
 	},
 	"find_in_files":
 	{
@@ -282,6 +298,8 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"msg_q",
+			"test_mark_proc"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -289,6 +307,7 @@
 		"regex": false,
 		"replace_history":
 		[
+			"self.msg_q"
 		],
 		"reverse": false,
 		"show_context": true,
@@ -299,61 +318,102 @@
 	"groups":
 	[
 		{
-			"selected": 1,
+			"selected": 0,
 			"sheets":
 			[
 				{
 					"buffer": 0,
+					"file": "displayer.py",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 0,
+						"buffer_size": 2693,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								0,
-								0
+								420,
+								420
 							]
 						],
 						"settings":
 						{
 							"WordCount":
 							{
-								"changes": 0,
-								"count": 0,
-								"modified": false,
-								"selection": false,
+								"changes": -1,
+								"modified": true,
+								"selection": true,
 								"status": -1,
-								"syntax": "plain text"
+								"syntax": "python"
 							},
-							"git_gutter_is_enabled": false,
-							"syntax": "Packages/Text/Plain text.tmLanguage"
+							"git_gutter_is_enabled": true,
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 0.0,
+						"translation.y": 111.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
+					"stack_index": 0,
 					"type": "text"
 				},
 				{
 					"buffer": 1,
-					"file": "displayer.py",
+					"file": "tester.py",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 2260,
+						"buffer_size": 16486,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								347,
-								347
+								12673,
+								12673
+							]
+						],
+						"settings":
+						{
+							"WordCount":
+							{
+								"changes": -1,
+								"modified": true,
+								"selection": true,
+								"status": -1,
+								"syntax": "python"
+							},
+							"git_gutter_is_enabled": true,
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 5054.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "populate.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 11122,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								23,
+								23
 							]
 						],
 						"settings":
@@ -375,7 +435,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 0,
+					"stack_index": 1,
 					"type": "text"
 				}
 			]
@@ -424,7 +484,7 @@
 	"project": "orienter.sublime-project",
 	"replace":
 	{
-		"height": 52.0
+		"height": 73.0
 	},
 	"save_all_on_build": true,
 	"select_file":

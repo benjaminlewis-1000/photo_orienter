@@ -1,5 +1,6 @@
 from pynput.keyboard import Key
 from pynput.keyboard import Listener
+import pynput
 import threading
 import Queue
 import cv2
@@ -7,6 +8,7 @@ import xmltodict
 import os
 from exif_rotate import rotate_file
 from time import sleep
+from collections import deque
 from populate import tableMinder
 
 
@@ -22,6 +24,12 @@ class keyLoggerDisplay():
         self.msg_q = Queue.Queue()
         self.db_q= Queue.Queue()
 
+        self.loaded_imgs_q = Queue.Queue()
+        self.next_files_q = Queue.Queue()
+
+        self.max_loaded = 100
+        self.num_loaders = 8
+        self.max_back_imgs = 20
 
         script_path  = os.path.abspath(os.path.join(__file__,".."))
 
@@ -36,8 +44,15 @@ class keyLoggerDisplay():
 
         self.list_of_files = self.db_class.list_unprocessed()
 
+        for file in self.list_of_files:
+            self.next_files_q.put(file)
+
         print(len(self.list_of_files))
         self.num_files = len(self.list_of_files)
+        print(self.list_of_files)
+
+        if self.num_files == 0:
+            exit()
 
 
         self.poss_actions = self.params['params']['possible_actions']
@@ -52,24 +67,44 @@ class keyLoggerDisplay():
         
         self.threads = []
 
+        self.stop_event = threading.Event()
+
         for algo in [self.keylogger, self.threadListen]:
             t = threading.Thread(target=algo)
             self.threads.append(t)
             t.start()
 
+        for i in range(self.num_loaders):
+            t = threading.Thread(target=self.__imgLoader__)
+            self.threads.append(t)
+            t.start()
+
         self.__dbHandler__()
 
+    def __imgLoader__(self):
+        while not self.stop_event.is_set():
+            if not self.next_files_q.empty():
+                if self.loaded_imgs_q.qsize() < self.max_loaded :
+                    next_file = self.next_files_q.get()
+                    img = cv2.imread(next_file)
+
+                    rVal = {'file': next_file, 'image': img}
+                    self.loaded_imgs_q.put(rVal)
+
+                # print('Image Queue is of length: {}'.format(self.loaded_imgs_q.qsize()))
+        print("Image loader stopped")
 
     def __dbHandler__(self):
-        while True:
-            item = self.db_q.get()
-            file, action = item
-            if file == 'EXIT':
-                break
+        while not self.stop_event.is_set():
+            if not self.db_q.empty():
+                item = self.db_q.get()
+                file, action = item
+                print("Processing file {}".format(file))
 
-            self.db_class.mark_processed(file, action)
-            
-            sleep(0.5)
+                self.db_class.mark_processed(file, action)
+                
+                # sleep(0.5)
+        print("Database handler stopped")
 
         
     # Key loggers 
@@ -77,7 +112,7 @@ class keyLoggerDisplay():
         self.msg_q.put(key)
 
     def on_release(self, key):
-        if key == Key.esc:
+        if key == Key.esc or self.stop_event.is_set():
             # Stop listener
             return False
 
@@ -89,14 +124,27 @@ class keyLoggerDisplay():
             listener.join()
 
     def threadListen(self):
-        print("Hi there!")
-        img = cv2.imread(self.list_of_files[0])
-        i = 0
+
+        # Checklist - going back, then forward, should load an image
+        # as it has been altered - not as it was pushed in the queue. 
+
+        forward_dict_list = deque()
+        backward_dict_list = deque()
+        backward_files_list = deque()
+
+        while self.loaded_imgs_q.empty():
+            pass
+
+        current_img_object = self.loaded_imgs_q.get()
+        img = current_img_object['image']
+        filename = current_img_object['file']
+
         cv2.namedWindow('image', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('image', 600, 600)
         cv2.imshow('image', img)
-        cv2.waitKey(1000)
-        while True:
+        cv2.waitKey(500)
+        while not self.stop_event.is_set():
+            # if not self.loaded_imgs_q.empty():
             item = self.msg_q.get()
             try:
                 item_char = item.char.lower()
@@ -108,50 +156,98 @@ class keyLoggerDisplay():
                     item_char = 'a'
                     
             if item == Key.esc:
-                self.db_q.put(['EXIT', 'EXIT'])
-                break
+                # Stop execution
+                self.stop_event.set()
+
             if item_char == 'a':
-                self.db_q.put([self.list_of_files[i % self.num_files], None])
-                i -= 1
-                img = cv2.imread(self.list_of_files[i % self.num_files])
-                cv2.imshow('image', img)
+                # Move BACKWARD
+                if len(backward_files_list) == 0 and len(backward_dict_list) == 0:
+                    pass # Do nothing -- no files to go back to.
+                else:
+                    # Tell the database to take care of the current image 
+                    # before we change it
+                    self.db_q.put([current_img_object['file'], None])
+                    # Put the current image on the forward list.
+                    forward_dict_list.appendleft(current_img_object)
+                    try:
+                        # Try and get a backward dictionary
+                        current_img_object = backward_dict_list.pop()
+                        img = current_img_object['image']
+                    except IndexError as ie: # Nothing in the backward dict list
+                        # Already assured that at least one of the lists has a
+                        # length > 0, so backward_files_list should be OK. 
+                        filename = backward_files_list.pop()
+                        # Read in the image
+                        img = cv2.imread(filename)
+                        # Form the object. 
+                        current_img_object = {'file': filename, 'image': img}
+                    cv2.imshow('image', img)
+
             elif item_char == 'd':
-                self.db_q.put([self.list_of_files[i % self.num_files], None])
-                i += 1
-                img = cv2.imread(self.list_of_files[i % self.num_files])
+                # Push to backward lists
+                backward_dict_list.append(current_img_object)
+                if len(backward_dict_list) > self.max_back_imgs:
+                    back_popped = backward_dict_list.popleft()
+                    back_file = back_popped['file']
+                    backward_files_list.append(back_file)
+                # Put the current file as processed.
+                self.db_q.put([current_img_object['file'], None])
+
+                if len(forward_dict_list) == 0:
+                    if not self.loaded_imgs_q.empty():
+                        current_img_object = self.loaded_imgs_q.get()
+                    # else:
+                    #     self.stop_event.set()
+                else:
+                    current_img_object = forward_dict_list.popleft()
+                
+                img = current_img_object['image']
                 cv2.imshow('image', img)
+
             elif item_char == '[':
                 # Rotate CCW
-
-        # self.none_action = self.poss_actions['action_none']
-        # self.clockwise_action = self.poss_actions['action_clockwise']
-        # self.ccw_action = self.poss_actions['action_ccw']
-        # self.r180_action = self.poss_actions['action_180']
-        # self.delete_action = self.poss_actions['action_delete']
-
-                self.db_q.put([self.list_of_files[i % self.num_files], self.ccw_action])
-                file = self.list_of_files[i % self.num_files]
-                rotate_file(file, 'left')
-                img = cv2.imread(file)
+                filename = current_img_object['file']
+                self.db_q.put([filename, self.ccw_action])
+                rotate_file(filename, 'left')
+                img = cv2.imread(filename)
                 cv2.imshow('image', img)
+                # Update the current image object. 
+                current_img_object['image'] = img
+
             elif item_char == ']':
-                self.db_q.put([self.list_of_files[i % self.num_files], self.clockwise_action])
-                file = self.list_of_files[i % self.num_files]
-                rotate_file(file, 'right')
-                img = cv2.imread(file)
+                # Rotate CW
+                filename = current_img_object['file']
+                self.db_q.put([filename, self.clockwise_action])
+                rotate_file(filename, 'right')
+                img = cv2.imread(filename)
                 cv2.imshow('image', img)
-            elif item_char == 'i':
-                print(self.list_of_files[i % self.num_files])
-            elif item_char == 'd':
-                self.db_q.put([self.list_of_files[i % self.num_files], self.delete_action])
-            elif item_char == '=' or item_char == '+':
-                self.db_q.put([self.list_of_files[i % self.num_files], self.r180_action])
-                file = self.list_of_files[i % self.num_files]
-                rotate_file(file, '180')
-                img = cv2.imread(file)
-                cv2.imshow('image', img)
-            cv2.waitKey(50)
-            cv2.waitKey(50)
+                # Update the current image object. 
+                current_img_object['image'] = img
 
+            elif item_char == 'i':
+                # Show information 
+                print(current_img_object['file'])
+
+            elif item_char == 't':
+                # 't' for 'trash' or 'delete'
+                self.db_q.put([current_img_object['file'], self.delete_action])
+
+            elif item_char == '=' or item_char == '+':
+                filename = current_img_object['file']
+                self.db_q.put(filename, self.r180_action)
+                # file = self.list_of_files[i % self.num_files]
+                rotate_file(filename, '180')
+                img = cv2.imread(filename)
+                cv2.imshow('image', img)
+                # Update the current image object. 
+                current_img_object['image'] = img
+
+            cv2.waitKey(50)
+            # else:
+            #     self.stop_event.set()
+            #     break
+
+        cv2.destroyWindow('image')
+        print("Listener thread stopped")
 
 display = keyLoggerDisplay()
