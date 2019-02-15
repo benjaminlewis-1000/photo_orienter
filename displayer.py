@@ -29,7 +29,7 @@ class keyLoggerDisplay():
 
         self.max_loaded = 100
         self.num_loaders = 8
-        self.max_back_imgs = 20
+        self.max_back_imgs = 100
 
         script_path  = os.path.abspath(os.path.join(__file__,".."))
 
@@ -52,7 +52,6 @@ class keyLoggerDisplay():
         if self.num_files == 0:
             exit()
 
-
         self.poss_actions = self.params['params']['possible_actions']
 
         self.none_action = self.poss_actions['action_none']
@@ -60,8 +59,6 @@ class keyLoggerDisplay():
         self.ccw_action = self.poss_actions['action_ccw']
         self.r180_action = self.poss_actions['action_180']
         self.delete_action = self.poss_actions['action_delete']
-
-        # exit()
         
         self.threads = []
 
