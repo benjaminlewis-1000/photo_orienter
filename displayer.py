@@ -9,6 +9,7 @@ import os
 from exif_rotate import rotate_file
 from time import sleep
 from collections import deque
+import time
 from populate import tableMinder
 
 
@@ -27,9 +28,9 @@ class keyLoggerDisplay():
         self.loaded_imgs_q = Queue.Queue()
         self.next_files_q = Queue.Queue()
 
-        self.max_loaded = 100
-        self.num_loaders = 8
-        self.max_back_imgs = 100
+        self.max_loaded = 50
+        self.num_loaders = 5
+        self.max_back_imgs = 20
 
         script_path  = os.path.abspath(os.path.join(__file__,".."))
 
@@ -43,6 +44,8 @@ class keyLoggerDisplay():
         self.db_class = tableMinder(self.params, print_inserts = False)
 
         self.list_of_files = self.db_class.list_unprocessed()
+
+        print("You have {} files left to do!".format(len(self.list_of_files)))
 
         for file in self.list_of_files:
             self.next_files_q.put(file)
@@ -81,12 +84,19 @@ class keyLoggerDisplay():
             if not self.next_files_q.empty():
                 if self.loaded_imgs_q.qsize() < self.max_loaded :
                     next_file = self.next_files_q.get()
-                    img = cv2.imread(next_file)
+                    if os.path.exists(next_file):
+                        # print(next_file)
+                        try:
+                            img = cv2.imread(next_file)
 
-                    rVal = {'file': next_file, 'image': img}
-                    self.loaded_imgs_q.put(rVal)
+                            rVal = {'file': next_file, 'image': img}
+                            self.loaded_imgs_q.put(rVal)
+                        except Exception as e:
+                            print("Exception: {}".format(e))
+                            pass
 
-                # print('Image Queue is of length: {}'.format(self.loaded_imgs_q.qsize()))
+                        if self.loaded_imgs_q.qsize() < 10:
+                            print('Image Queue is of length: {}'.format(self.loaded_imgs_q.qsize()))
         print("Image loader stopped")
 
     def __dbHandler__(self):
@@ -94,7 +104,7 @@ class keyLoggerDisplay():
             if not self.db_q.empty():
                 item = self.db_q.get()
                 file, action = item
-                print("Processing file {}".format(file))
+                # print("Processing file {}".format(file))
 
                 self.db_class.mark_processed(file, action)
                 
@@ -123,9 +133,61 @@ class keyLoggerDisplay():
         # Checklist - going back, then forward, should load an image
         # as it has been altered - not as it was pushed in the queue. 
 
+
         forward_dict_list = deque()
         backward_dict_list = deque()
         backward_files_list = deque()
+
+        def __advanceImage__(current_img_object):
+
+            def push_back():
+                # A function that only pushes things back if we are 
+                # actually progressing to a next image. 
+                backward_dict_list.append(current_img_object)
+                if len(backward_dict_list) > self.max_back_imgs:
+                    back_popped = backward_dict_list.popleft()
+                    back_file = back_popped['file']
+                    backward_files_list.append(back_file)
+                self.db_q.put([current_img_object['file'], None])
+
+            next_loaded = False
+            if len(forward_dict_list) == 0:
+                if not self.loaded_imgs_q.empty():
+                    push_back()
+                    current_img_object = self.loaded_imgs_q.get()
+                # else:
+                #     self.stop_event.set()
+            else:
+                push_back()
+                current_img_object = forward_dict_list.popleft()
+
+
+            # Put the current file as processed.
+            
+            # print(current_img_object['file'])
+            # print(current_img_object['image'][0][0])
+            img = current_img_object['image']
+            cv2.imshow('image', img)
+            cv2.waitKey(50)
+
+            return current_img_object
+
+        def __rotate_loaded__(img, rotate_command):
+            st = time.time()
+            if rotate_command == self.ccw_action:
+                altered_img = cv2.transpose(img)
+                altered_img = cv2.flip(altered_img, flipCode=0)
+            elif rotate_command == self.clockwise_action:
+                altered_img = cv2.transpose(img)
+                altered_img = cv2.flip(altered_img, flipCode=1)
+            elif rotate_command == self.r180_action:
+                altered_img = cv2.flip(img, flipCode=0)
+                altered_img = cv2.flip(altered_img, flipCode=1)
+            else:
+                raise ValueError('Rotate command passed was not valid')
+                self.stop_event.set()
+            print("Took {} seconds to rotate.".format(time.time() - st))
+            return altered_img
 
         while self.loaded_imgs_q.empty():
             pass
@@ -177,56 +239,13 @@ class keyLoggerDisplay():
                         # Form the object. 
                         current_img_object = {'file': filename, 'image': img}
                     cv2.imshow('image', img)
+                    cv2.waitKey(50)
 
             elif item_char == 'd':
                 # Push to backward lists
-
-                def push_back():
-                    # A function that only pushes things back if we are 
-                    # actually progressing to a next image. 
-                    backward_dict_list.append(current_img_object)
-                    if len(backward_dict_list) > self.max_back_imgs:
-                        back_popped = backward_dict_list.popleft()
-                        back_file = back_popped['file']
-                        backward_files_list.append(back_file)
-                    self.db_q.put([current_img_object['file'], None])
-
-                next_loaded = False
-                if len(forward_dict_list) == 0:
-                    if not self.loaded_imgs_q.empty():
-                        push_back()
-                        current_img_object = self.loaded_imgs_q.get()
-                    # else:
-                    #     self.stop_event.set()
-                else:
-                    push_back()
-                    current_img_object = forward_dict_list.popleft()
-
-
-                # Put the current file as processed.
-                
-                img = current_img_object['image']
-                cv2.imshow('image', img)
-
-            elif item_char == '[':
-                # Rotate CCW
-                filename = current_img_object['file']
-                self.db_q.put([filename, self.ccw_action])
-                rotate_file(filename, 'left')
-                img = cv2.imread(filename)
-                cv2.imshow('image', img)
-                # Update the current image object. 
-                current_img_object['image'] = img
-
-            elif item_char == ']':
-                # Rotate CW
-                filename = current_img_object['file']
-                self.db_q.put([filename, self.clockwise_action])
-                rotate_file(filename, 'right')
-                img = cv2.imread(filename)
-                cv2.imshow('image', img)
-                # Update the current image object. 
-                current_img_object['image'] = img
+                # print(current_img_object['file'])
+                # print(current_img_object['image'][0][0])
+                current_img_object = __advanceImage__(current_img_object)
 
             elif item_char == 'i':
                 # Show information 
@@ -235,18 +254,46 @@ class keyLoggerDisplay():
             elif item_char == 't':
                 # 't' for 'trash' or 'delete'
                 self.db_q.put([current_img_object['file'], self.delete_action])
+                current_img_object = __advanceImage__(current_img_object)
 
-            elif item_char == '=' or item_char == '+':
+
+            elif item_char == '[':
+                # Rotate CCW
                 filename = current_img_object['file']
-                self.db_q.put(filename, self.r180_action)
-                # file = self.list_of_files[i % self.num_files]
-                rotate_file(filename, '180')
-                img = cv2.imread(filename)
+                self.db_q.put([filename, self.ccw_action])
+                rotate_file(filename, 'left')
+                img = __rotate_loaded__(current_img_object['image'], self.ccw_action)
+                # img = cv2.imread(filename)
                 cv2.imshow('image', img)
+                cv2.waitKey(50)
                 # Update the current image object. 
                 current_img_object['image'] = img
 
-            cv2.waitKey(50)
+            elif item_char == ']':
+                # Rotate CW
+                filename = current_img_object['file']
+                self.db_q.put([filename, self.clockwise_action])
+                rotate_file(filename, 'right')
+                img = __rotate_loaded__(current_img_object['image'], self.clockwise_action)
+                # img = cv2.imread(filename)
+                cv2.imshow('image', img)
+                cv2.waitKey(50)
+                # Update the current image object. 
+                current_img_object['image'] = img
+
+            elif item_char == '=' or item_char == '+':
+                filename = current_img_object['file']
+                self.db_q.put([filename, self.r180_action])
+                # file = self.list_of_files[i % self.num_files]
+                rotate_file(filename, '180')
+                img = __rotate_loaded__(current_img_object['image'], self.r180_action)
+                # img = cv2.imread(filename)
+                cv2.imshow('image', img)
+                cv2.waitKey(50)
+                # Update the current image object. 
+                current_img_object['image'] = img
+
+            cv2.waitKey(100)
             # else:
             #     self.stop_event.set()
             #     break

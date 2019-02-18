@@ -3,10 +3,15 @@
 import pexif
 import sys
 
+#/mnt/server_photos/Pictures_In_Progress/2018/Nathaniel Baby Blessing/ has issues
 
 def rotate_file(filename, direction):
 
-    img = pexif.JpegFile.fromFile(filename)
+    try:
+        img = pexif.JpegFile.fromFile(filename)
+    except Exception as e:
+        print("Exception: {} in file {}".format(e, filename))
+        return False
 
     try:
         orientation = img.exif.primary.Orientation[0]
