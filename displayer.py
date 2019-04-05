@@ -1,3 +1,5 @@
+#! /usr/bin/env python2
+
 from pynput.keyboard import Key
 from pynput.keyboard import Listener
 import pynput
@@ -10,7 +12,9 @@ from exif_rotate import rotate_file
 from time import sleep
 from collections import deque
 import time
+import shutil
 from populate import tableMinder
+import argparse
 
 
 imgs = ['tests/byu.jpg', 'tests/byu_left.jpg', 'tests/byu_right.jpg', 'tests/byu_180.jpg']
@@ -19,7 +23,7 @@ imgs = ['tests/byu.jpg', 'tests/byu_left.jpg', 'tests/byu_right.jpg', 'tests/byu
 
 class keyLoggerDisplay():
     """docstring for keyLoggerDisplay"""
-    def __init__(self):
+    def __init__(self, args):
         # super(keyLoggerDisplay, self).__init__()
         # self.arg = arg
         self.msg_q = Queue.Queue()
@@ -32,6 +36,8 @@ class keyLoggerDisplay():
         self.num_loaders = 5
         self.max_back_imgs = 20
 
+        self.delete_allowed = False
+
         script_path  = os.path.abspath(os.path.join(__file__,".."))
 
         with open(os.path.join(script_path, 'params.xml') ) as stream:
@@ -43,14 +49,27 @@ class keyLoggerDisplay():
 
         self.db_class = tableMinder(self.params, print_inserts = False)
 
-        self.list_of_files = self.db_class.list_unprocessed()
+        if args.delete_photos:
+            self.list_of_files = self.db_class.list_to_delete()
+            
+            print(len(self.list_of_files))
+            self.num_files = len(self.list_of_files)
+            self.delete_allowed = True
+        else:
+            self.list_of_files = self.db_class.list_unprocessed()
 
-        print("You have {} files left to do!".format(len(self.list_of_files)))
+            indb_query = '''SELECT COUNT(*) FROM {}'''.format(self.params['params']['photo_table']['name'])
+            total_files = self.db_class.conn.execute(indb_query).fetchall()[0]
+
+            self.num_files = len(self.list_of_files )
+            percent_todo = float(self.num_files) / total_files
+
+            print("You are {:.2f}% of the way through with {} files left to do!".format(100 * (1.0 - percent_todo), self.num_files))
 
         for file in self.list_of_files:
             self.next_files_q.put(file)
 
-        self.num_files = len(self.list_of_files)
+
 
         if self.num_files == 0:
             exit()
@@ -87,7 +106,13 @@ class keyLoggerDisplay():
                     if os.path.exists(next_file):
                         # print(next_file)
                         try:
-                            img = cv2.imread(next_file)
+                            oriimg = cv2.imread(next_file)
+
+                            height, width, depth = oriimg.shape
+                            W = 400.0
+                            imgScale = W / width
+                            newX,newY = oriimg.shape[1]*imgScale, oriimg.shape[0]*imgScale
+                            img = cv2.resize(oriimg,(int(newX),int(newY)))
 
                             rVal = {'file': next_file, 'image': img}
                             self.loaded_imgs_q.put(rVal)
@@ -95,7 +120,7 @@ class keyLoggerDisplay():
                             print("Exception: {}".format(e))
                             pass
 
-                        if self.loaded_imgs_q.qsize() < 10:
+                        if self.loaded_imgs_q.qsize() < 4:
                             print('Image Queue is of length: {}'.format(self.loaded_imgs_q.qsize()))
         print("Image loader stopped")
 
@@ -186,7 +211,7 @@ class keyLoggerDisplay():
             else:
                 raise ValueError('Rotate command passed was not valid')
                 self.stop_event.set()
-            print("Took {} seconds to rotate.".format(time.time() - st))
+            # print("Took {} seconds to rotate.".format(time.time() - st))
             return altered_img
 
         while self.loaded_imgs_q.empty():
@@ -200,6 +225,8 @@ class keyLoggerDisplay():
         cv2.resizeWindow('image', 600, 600)
         cv2.imshow('image', img)
         cv2.waitKey(500)
+
+        total_delete_size = 0
         while not self.stop_event.is_set():
             # if not self.loaded_imgs_q.empty():
             item = self.msg_q.get()
@@ -214,6 +241,8 @@ class keyLoggerDisplay():
                     
             if item == Key.esc:
                 # Stop execution
+                del_size_mb = float(total_delete_size) / (1024 ** 2)
+                print("Total deleted was {:.2f} MB".format(del_size_mb))
                 self.stop_event.set()
 
             if item_char == 'a':
@@ -247,11 +276,38 @@ class keyLoggerDisplay():
                 # print(current_img_object['image'][0][0])
                 current_img_object = __advanceImage__(current_img_object)
 
+            elif item_char == 'x':
+                fname = current_img_object['file']
+                print(os.path.getsize(fname))
+                total_delete_size += os.path.getsize(fname)
+                if self.delete_allowed:
+                    print("Would delete this file")
+                    file_part = fname.split('/')[-1]
+                    print(file_part)
+                    try:
+                        shutil.move(fname, os.path.join('/tmp', file_part) )
+                    except IOError as ioe:
+                        print("No such file: {}".format(fname))
+                    current_img_object = __advanceImage__(current_img_object)
+                else:
+                    print("Deletion not allowed in this context")
+
+            elif item_char == 'r':
+                fname = current_img_object['file']
+                if self.delete_allowed:
+                    file_part = fname.split('/')[-1]
+                    print(file_part)
+                    try:
+                        shutil.move(os.path.join('/tmp', file_part), fname)
+                    except IOError as ioe:
+                        print ("No file to restore -- probably wasn't deleted.")
+
+
             elif item_char == 'i':
                 # Show information 
                 print(current_img_object['file'])
 
-            elif item_char == 't':
+            elif item_char == 't' or item_char == '9':
                 # 't' for 'trash' or 'delete'
                 self.db_q.put([current_img_object['file'], self.delete_action])
                 current_img_object = __advanceImage__(current_img_object)
@@ -301,4 +357,12 @@ class keyLoggerDisplay():
         cv2.destroyWindow('image')
         print("Listener thread stopped")
 
-display = keyLoggerDisplay()
+
+parser = argparse.ArgumentParser(description="Python to orient photos")
+parser.add_argument('--delete_photos', action='store_true', help='Verify deletions')
+# parser.add_argument('--root', help='Root in which to search for JPG files')
+# parser.add_argument('--update_db', action="store_true", help='Update the database')
+
+args = parser.parse_args()
+
+display = keyLoggerDisplay(args)

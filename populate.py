@@ -185,6 +185,34 @@ class tableMinder:
 
         return files
 
+    def list_to_delete(self):
+        select_query = '''SELECT {full_path_col} FROM {tab_name} WHERE {reviewed_col} = 1 AND {action_col} = "{del_action}"'''\
+        .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col,
+            action_col = self.action_taken_col, del_action = self.poss_actions['action_delete'])
+
+        # Get a cursor, fetch all into a list
+        c = self.conn.cursor()
+        files = c.execute(select_query).fetchall()
+
+        # files = []
+
+        return files
+
+    def rm_deleted_from_db(self):
+        files = self.list_to_delete()
+
+        c = self.conn.cursor()
+        for f in files:
+            if not os.path.exists(f):
+                DEL_QUERY = '''DELETE FROM {tab_name} WHERE {full_path_col} = "{ph_name}"'''\
+                    .format(full_path_col = self.full_path_col, tab_name = self.photo_table_name, \
+                        ph_name = f)
+                c.execute(DEL_QUERY)
+
+                self.conn.commit()
+
+
+
     def __net_action__(self, init_state, subsequent_action):
         # Function that takes an initial state, a subsequent action,
         # and defines what the new state should be.
