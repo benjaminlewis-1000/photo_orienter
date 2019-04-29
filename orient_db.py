@@ -1,5 +1,4 @@
-#! /usr/bin/env python
-# -*- coding: utf-8 -*-
+#! /usr/bin/env python2
 
 import sqlite3
 from sqlite3 import Error
@@ -24,7 +23,7 @@ with open(os.path.join(script_path, 'params.xml') ) as stream:
 parser = argparse.ArgumentParser(description="Python to orient photos")
 parser.add_argument('--dbInit', action='store_true', help='Create new database')
 parser.add_argument('--root', help='Root in which to search for JPG files')
-parser.add_argument('--update_db', action="store_true", help='Update the database')
+parser.add_argument('-u', '--update_db', action="store_true", help='Update the database')
 
 args = parser.parse_args()
 

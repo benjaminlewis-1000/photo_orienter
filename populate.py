@@ -8,6 +8,7 @@ import argparse
 import xmltodict
 import multithread_walk as mtw
 # UTF encoding for files
+import cv2
 import sys  
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -198,11 +199,25 @@ class tableMinder:
 
         return files
 
+    def delete_file(self, filename):
+        c = self.conn.cursor()
+        if not os.path.exists(filename):
+            DEL_QUERY =  '''DELETE FROM {tab_name} WHERE {full_path_col} = "{ph_name}"'''\
+                    .format(full_path_col = self.full_path_col, tab_name = self.photo_table_name, \
+                        ph_name = filename)
+            c.execute(DEL_QUERY)
+            self.conn.commit()
+
     def rm_deleted_from_db(self):
         files = self.list_to_delete()
 
+        i = 0
+
         c = self.conn.cursor()
         for f in files:
+            i += 1
+            if i % 100 == 0:
+                print("{} / {}".format(i, len(files)))
             if not os.path.exists(f):
                 DEL_QUERY = '''DELETE FROM {tab_name} WHERE {full_path_col} = "{ph_name}"'''\
                     .format(full_path_col = self.full_path_col, tab_name = self.photo_table_name, \
@@ -210,7 +225,6 @@ class tableMinder:
                 c.execute(DEL_QUERY)
 
                 self.conn.commit()
-
 
 
     def __net_action__(self, init_state, subsequent_action):
@@ -314,3 +328,61 @@ class tableMinder:
             print("Integrity error: {}. File \"{}\" not updated.".format(e, utf_path))
 
         self.conn.commit()
+
+
+    def __rotate_cv_img__(self, rotate_command, img_pixels):
+        # Helper function to rotate an OpenCV image. Found it on the internet somewhere,
+        # but I have tested and know it works. 
+
+
+        cw_action = self.poss_actions['action_clockwise']
+        ccw_action = self.poss_actions['action_ccw']
+        r180_action = self.poss_actions['action_180']
+
+        if rotate_command == ccw_action:
+            altered_img = cv2.transpose(img_pixels)
+            altered_img = cv2.flip(altered_img, flipCode=0)
+        elif rotate_command == cw_action:
+            altered_img = cv2.transpose(img_pixels)
+            altered_img = cv2.flip(altered_img, flipCode=1)
+        elif rotate_command == r180_action:
+            altered_img = cv2.flip(img_pixels, flipCode=0)
+            altered_img = cv2.flip(altered_img, flipCode=1)
+        else:
+            raise ValueError('Rotate command passed was not valid')
+            self.stop_event.set()
+
+        return altered_img
+
+    def __hash_img__(self, filename):
+        # Find the hash of the image and all three other rotations.
+        # The hash of the image is the minimum of all these hashes.
+        # Useful for determining if an image is the same but rotated. 
+
+        img_pixels = cv2.imread(filename)
+        # Hash the original
+        hash_orig = hash(img_pixels.tostring())
+        # Hash clockwise
+
+        cw_action = self.poss_actions['action_clockwise']
+        ccw_action = self.poss_actions['action_ccw']
+        r180_action = self.poss_actions['action_180']
+
+        hash_cw = hash(
+            self.__rotate_cv_img__(cw_action, img_pixels).tostring()
+            )
+        # Hash counter-clockwise
+        hash_ccw = hash(
+            self.__rotate_cv_img__(ccw_action, img_pixels).tostring()
+            )
+        # Hash rotated by 180
+        hash_180 = hash(
+            self.__rotate_cv_img__(r180_action, img_pixels).tostring()
+            )
+
+        # To detect simple rotations, we want the minimum hash. It cuts
+        # our hash space somewhat, but collisions are still unlikely. 
+        minhash = min(hash_orig, hash_ccw, hash_cw, hash_180)
+        maxhash = max(hash_orig, hash_ccw, hash_cw, hash_180)
+        # self.img_hash_val = minhash
+        return minhash, maxhash
