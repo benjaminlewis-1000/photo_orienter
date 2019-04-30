@@ -50,6 +50,7 @@ class test_populator(unittest.TestCase):
             self.test_dirs.append(dname)
 
         self.actual_test_dir = os.path.abspath('tests')
+        self.dup_test_dir = os.path.abspath('tests_duplicates')
 
         multitest_raw = [ 'tests/çÃba', 'tests']
         self.multi_test_dir = []
@@ -117,7 +118,7 @@ class test_populator(unittest.TestCase):
 
     def __get_jpgs_under_dir__(self, dirname):
         all_files = []
-        # print dirname.encode('utf-8')
+        print dirname.encode('utf-8')
         self.assertTrue(os.path.isdir(dirname))
         # If you pass a unicode (u''+name) to os.walk, you get unicode results.
         for root, dirs, files in os.walk(u''+dirname):
@@ -165,6 +166,7 @@ class test_populator(unittest.TestCase):
             self.db_class.insert_root(dir_under_test)
             self.db_class.add_from_roots()
             num_inserted = self.__get_num_photos_inserted__()
+            print(dir_under_test)
             jpegs_under = self.__get_jpgs_under_dir__(dir_under_test)
 
             get_stored_files = '''SELECT {file_col} FROM {photo_table}'''.format(photo_table = self.params['params']['photo_table']['name'], \
@@ -200,6 +202,36 @@ class test_populator(unittest.TestCase):
         under_test_dir = self.__get_jpgs_under_dir__(self.actual_test_dir)
         self.assertTrue(len(unprocessed_list), num_files_stored)
         self.assertTrue(set(unprocessed_list) == set(under_test_dir))
+
+
+    def test_add_duplicates(self):
+        self.db_class.insert_root(self.dup_test_dir)
+        self.db_class.add_from_roots()
+
+        num_record_query = '''SELECT COUNT(*) FROM {table}'''.format(table=self.params['params']['photo_table']['name'])
+        num_records = self.cur.execute(num_record_query).fetchall()[0]
+        print(num_records)
+        self.assertEqual(num_records, 1) 
+
+    def test_move_file(self):
+        self.db_class.insert_root(self.actual_test_dir)
+        self.db_class.add_from_roots()
+        unprocessed_list = self.db_class.list_unprocessed()
+        old_len = len(unprocessed_list)
+
+        change_file = unprocessed_list[0]
+        parts = change_file.split('/')
+        newname = os.path.join('/'.join(parts[:-1]), 'garbage_nobody.jpg')
+        # print newname
+        os.rename(change_file, newname)
+        self.db_class.add_from_roots()
+        os.rename(newname, change_file)
+        unprocessed_list2 = self.db_class.list_unprocessed()
+        self.assertEqual(len(unprocessed_list2), old_len)
+        # print  unprocessed_list2
+        self.assertTrue(newname in unprocessed_list2)
+        self.assertFalse(change_file in unprocessed_list2)
+
 
     def test_mark_processed(self):
         # Set up database, then get list of unprocessed files

@@ -6,6 +6,8 @@
 			<full_path_col>fullPath</full_path_col>
 			<reviewed_col>isReviewed</reviewed_col>
 			<action_taken_col>actionTaken</action_taken_col>
+			<big_hash_col>bighash</big_hash_col>
+			<small_hash_col>smallhash</small_hash_col>
 	</photo_table>
 	<param_table>
 		<name>params</name>

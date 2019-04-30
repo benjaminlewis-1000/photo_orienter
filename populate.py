@@ -9,6 +9,7 @@ import xmltodict
 import multithread_walk as mtw
 # UTF encoding for files
 import cv2
+import numpy as np
 import sys  
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -17,15 +18,20 @@ class tableMinder:
     """docstring for tableMinder"""
     def __init__(self, params, print_inserts = True):
         # super(tableMinder, self).__init__()
+
+        # Get the parameters
         self.params = params
 
         self.print_inserts = print_inserts
 
+        # From the parameter file, get the structure of the database tables.
         self.db_name = params['params']['db_name']
         self.photo_table_name = params['params']['photo_table']['name']
         self.full_path_col = params['params']['photo_table']['full_path_col']
         self.reviewed_col = params['params']['photo_table']['reviewed_col']
         self.action_taken_col = params['params']['photo_table']['action_taken_col']
+        self.big_hash_col = params['params']['photo_table']['big_hash_col']
+        self.small_hash_col = params['params']['photo_table']['small_hash_col']
 
         self.param_table = params['params']['param_table']['name']
         self.param_name = params['params']['param_table']['name_col']
@@ -34,21 +40,31 @@ class tableMinder:
         self.roots_table = params['params']['roots_table']['name']
         self.roots_col = params['params']['roots_table']['root_col']
 
+        # Get a list of possible actions - all three multiple of 90 degree
+        # rotations, none, and delete.
         self.poss_actions = params['params']['possible_actions']
         self.none_action = self.poss_actions['action_none']
 
-        # print self.poss_actions
+        # Make the possible actions into a list. It gets the list from
+        # the parameter keys. 
         self.poss_actions_list = [self.poss_actions[key] for key in self.poss_actions.keys()]
 
+        # Connect to the database 
         script_path  = os.path.abspath(os.path.join(__file__,".."))
         self.conn = sqlite3.connect(os.path.join(script_path, self.db_name))
         self.conn.text_factory = lambda x: unicode(x, "utf-8", "ignore")
-        self.conn.row_factory = lambda cursor, row: row[0]
+        # Don't do the following -- it messes up if you expect more than one column.
+        ## ##  self.conn# # ow_factory =#  lambda#  cursor, row: row[0]
 
 
         # print "Reminder: Want to limit action_taken values when setting up table."
 
     def add_from_roots(self):
+        # Get the list of root directories from the appropriate table. Do a 
+        # multithreaded walk along each root, getting all JPG type files and
+        # putting them in a list of files to insert. Then call the internal
+        # __insert_records_bulk__ function to add all the paths. That function
+        # also checks to see if the files are already in the database. 
 
         get_roots_query = '''SELECT {root_col} FROM {root_tab_name}'''\
         .format(root_tab_name =self.roots_table, root_col =self.roots_col)
@@ -63,18 +79,16 @@ class tableMinder:
         paths = []
         for eachRoot in roots:
             for root, dirs, files in mtw.walk(eachRoot, threads=10):
-                # print len(files)
                 for f in files:
                     if f.lower().endswith(tuple(['.jpg', '.jpeg'])):
                         fullPath = os.path.join(root, f)
                         paths.append(fullPath)
-                # print(len(paths))
-
-        # print(len(paths))
 
         self.__insert_records_bulk__(paths)
 
     def init_table(self):
+
+        # Set up the database with the appropriate tables and fields. 
 
         cc = self.conn.cursor()
 
@@ -88,16 +102,22 @@ class tableMinder:
             cc.execute(dropTable)
             self.conn.commit()
 
+        # Create the photo table, with a full path column, reviewed column,
+        # action taken column, and columns for big and small hash values.
         create_table = '''CREATE TABLE {tab_name} (
             {full_path} STRING UNIQUE,
             {reviewed} BOOLEAN NOT NULL CHECK ({reviewed} IN (0, 1) ),
-            {action_taken} STRING CHECK ({action_taken} IN ('{action_string}')) 
-        );'''.format(tab_name = self.photo_table_name, full_path = self.full_path_col, reviewed=self.reviewed_col, action_taken=self.action_taken_col,\
+            {action_taken} STRING CHECK ({action_taken} IN ('{action_string}')),
+            {big_hash_col} BIGINT,
+            {small_hash_col} BIGINT
+        );'''.format(tab_name = self.photo_table_name, full_path = self.full_path_col, reviewed=self.reviewed_col,\
+             action_taken=self.action_taken_col, big_hash_col = self.big_hash_col, small_hash_col = self.small_hash_col,\
             action_string='\', \''.join(self.poss_actions_list))
         ## CHECK ({action_taken}) IN (0, 1, 2,...)
 
         cc.execute(create_table)
 
+        # Create the parameter table. I haven't actually used this. 
         create_param_table = '''CREATE TABLE {pt_name} (
             {pm_name} STRING UNIQUE,
             {pm_val}  STRING
@@ -105,15 +125,21 @@ class tableMinder:
 
         cc.execute(create_param_table)
 
+        # Create the table that holds the root directories.
         create_roots_table = '''CREATE TABLE {root_tab_name} ( 
             {root_col} STRING UNIQUE
         );'''.format(root_tab_name =self.roots_table, root_col =self.roots_col)
         cc.execute(create_roots_table)
 
+        # Commit to write all this to disk.
         self.conn.commit()
 
     def insert_root(self, root_path):
 
+        # Given a root path, add it to the database as a path to look
+        # for images. Has checks to ensure that the path is a directory.
+
+        # Make the path into UTF-8 compliant. 
         try:
             utf_path = root_path.encode('utf-8')
         except UnicodeDecodeError as ude:
@@ -121,14 +147,16 @@ class tableMinder:
 
         utf_path = u''+utf_path
 
+        # Make the path an absolute path and check that it exists.
         utf_path = os.path.abspath(utf_path)
-
         if not os.path.isdir(utf_path):
             return False
 
+        # If it's good, go ahead and insert it into the DB.
         insert_query = '''INSERT INTO {root_tab_name} ({root_col}) VALUES (?)'''\
         .format(root_tab_name =self.roots_table, root_col =self.roots_col)
 
+        # Execute the query; this is just wrapped in some try-catch logic.
         try:
             cc = self.conn.cursor()
             cc.execute(insert_query, (utf_path,))
@@ -142,9 +170,11 @@ class tableMinder:
             else:
                 print("Integrity error: {}".format(e))
 
+        # Commit to disk
         self.conn.commit()
 
     def __insert_records_bulk__(self, full_path_array):
+
         i = 0
         cc = self.conn.cursor()
         for full_path in full_path_array:
@@ -154,23 +184,58 @@ class tableMinder:
             except UnicodeDecodeError as ude:
                 utf_path = full_path
 
-            insert_query = '''INSERT INTO {tab_name} ({full_path_col}, {reviewed_col}, {action_taken_col}) VALUES (?, 0, '{none_action}')'''\
-                .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col, \
-                    action_taken_col=self.action_taken_col, none_action = self.none_action)
+            # First, see if this record is in the database:
+            check_file_in_db_query = '''SELECT {full_path_col} FROM {photo_table} WHERE {full_path_col} = ?'''\
+                .format(photo_table = self.photo_table_name, full_path_col = self.full_path_col)
+            
+            vals = cc.execute(check_file_in_db_query, (utf_path,)).fetchall() 
+            if len(vals) == 0:
 
-            try:
-                cc.execute(insert_query, (utf_path,))
-                if self.print_inserts:
-                    print("Inserted file {}".format(utf_path))
-            except sqlite3.IntegrityError as e:
-                e = str(e)
-                if 'is not unique' in e or 'UNIQUE' in e:
-                    pass
+                try:
+                    minhash, maxhash = self.__hash_img__(utf_path)
+                except AttributeError as ae:
+                    print(ae + utf_path)
+                    continue
+
+                # Try and see if that hash value is already in the table. 
+                check_hash_query = '''SELECT {full_path_col} FROM {photo_table} WHERE {big_hash_col} = ? AND {small_hash_col} = ?'''\
+                    .format(photo_table = self.photo_table_name, full_path_col = self.full_path_col, \
+                        big_hash_col = self.big_hash_col, small_hash_col = self.small_hash_col)
+                hvals = cc.execute(check_hash_query, (maxhash, minhash)).fetchall()
+
+                if len(hvals) != 0:
+                    # Then we just need to update the file name.
+                    previous_path = hvals[0]
+                    update_table_query = '''UPDATE {photo_table} SET {full_path_col} = ? WHERE {full_path_col} = ?'''\
+                        .format(photo_table = self.photo_table_name, full_path_col = self.full_path_col)
+                    cc.execute(update_table_query, (utf_path, previous_path))
+                    self.conn.commit()
+
                 else:
-                    print("Integrity error: {}".format(e))
 
-            if i % 1000 == 0:
-                self.conn.commit()
+                    insert_query = '''INSERT INTO {tab_name} ({full_path_col}, {reviewed_col}, {action_taken_col}, 
+                        {big_hash_col}, {small_hash_col}) VALUES (?, 0, '{none_action}', ?, ?)'''\
+                        .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col, \
+                            action_taken_col=self.action_taken_col, none_action = self.none_action, \
+                            big_hash_col = self.big_hash_col, small_hash_col = self.small_hash_col)
+
+                    try:
+                        cc.execute(insert_query, (utf_path, maxhash, minhash))
+                        if self.print_inserts:
+                            print("Inserted file {}".format(utf_path))
+                    except sqlite3.IntegrityError as e:
+                        e = str(e)
+                        if 'is not unique' in e or 'UNIQUE' in e:
+                            pass
+                        else:
+                            print("Integrity error: {}".format(e))
+
+                if i % 1000 == 0:
+                    self.conn.commit()
+
+            else:
+                # File is already in database
+                pass 
 
         self.conn.commit()
 
@@ -199,14 +264,41 @@ class tableMinder:
 
         return files
 
+
+    def list_all(self):
+        select_query = '''SELECT {full_path_col} FROM {tab_name}'''\
+        .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col)
+
+        # Get a cursor, fetch all into a list
+        c = self.conn.cursor()
+        files = c.execute(select_query).fetchall()
+        files = [f[0] for f in files]
+
+        return files
+
+
+    def list_unhashed(self):
+        select_query = '''SELECT {full_path_col} FROM {tab_name} WHERE {small_hash_col} IS Null '''\
+        .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, small_hash_col = self.small_hash_col)
+
+        # Get a cursor, fetch all into a list
+        c = self.conn.cursor()
+        files = c.execute(select_query).fetchall()
+        files = [f[0] for f in files]
+
+        return files
+
     def delete_file(self, filename):
         c = self.conn.cursor()
         if not os.path.exists(filename):
+            print("Deleting file {}".format(filename))
             DEL_QUERY =  '''DELETE FROM {tab_name} WHERE {full_path_col} = "{ph_name}"'''\
                     .format(full_path_col = self.full_path_col, tab_name = self.photo_table_name, \
                         ph_name = filename)
             c.execute(DEL_QUERY)
             self.conn.commit()
+        else:
+            print("File {} is still there!".format(filename))
 
     def rm_deleted_from_db(self):
         files = self.list_to_delete()
@@ -359,26 +451,82 @@ class tableMinder:
         # The hash of the image is the minimum of all these hashes.
         # Useful for determining if an image is the same but rotated. 
 
-        img_pixels = cv2.imread(filename)
-        # Hash the original
-        hash_orig = hash(img_pixels.tostring())
-        # Hash clockwise
-
+        MINSIZE = 250
         cw_action = self.poss_actions['action_clockwise']
         ccw_action = self.poss_actions['action_ccw']
         r180_action = self.poss_actions['action_180']
 
-        hash_cw = hash(
-            self.__rotate_cv_img__(cw_action, img_pixels).tostring()
-            )
-        # Hash counter-clockwise
-        hash_ccw = hash(
-            self.__rotate_cv_img__(ccw_action, img_pixels).tostring()
-            )
-        # Hash rotated by 180
-        hash_180 = hash(
-            self.__rotate_cv_img__(r180_action, img_pixels).tostring()
-            )
+        # s = time.time()
+        img_pixels = cv2.imread(filename)
+        # print("Imread: {}".format(time.time() - s))
+        # print filename
+        # print(img_pixels.shape)
+        shapes = img_pixels.shape
+        h, w, c = shapes
+
+        # s = time.time()
+        top_left = img_pixels[:min(h, MINSIZE), :min(w, MINSIZE), :]
+        top_right = img_pixels[:min(h, MINSIZE), -min(w, MINSIZE):, :].copy()
+        bottom_left = img_pixels[-min(h, MINSIZE):, :min(w, MINSIZE), :].copy()
+        bottom_right = img_pixels[-min(h, MINSIZE):, -min(w, MINSIZE):, :].copy()
+        # print bottom_left[0, 0, 0]
+
+        # img_ccw = self.__rotate_cv_img__(r180_action, img_pixels)
+        # pix_subset = img_ccw[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
+        # Top pixels when rotated clockwise
+        pixels_cw = self.__rotate_cv_img__(cw_action, bottom_left)
+        # Top pixels when rotated counter-clockwise
+        pixels_ccw = self.__rotate_cv_img__(ccw_action, top_right)
+        # Top pixels, no rotation
+        pixels_no_rot = top_left
+        # Top pixels when rotated 180 degrees
+        pixels_180 = self.__rotate_cv_img__(r180_action, bottom_right)
+        # print np.array_equal(pixels_180, pix_subset)
+        # print bl_rot[0, 0, 0]
+        # print pix_subset[0, 0, 0]
+
+        hash_orig = hash(pixels_no_rot.tostring())
+        hash_cw = hash(pixels_cw.tostring())
+        hash_ccw = hash(pixels_ccw.tostring())
+        hash_180 = hash(pixels_180.tostring())
+
+        # print("Hash: {}".format(time.time() - s))
+        # A small subset of pixels should suffice.
+        # print(img_pixels.shape)
+
+        # shapes = img_pixels.shape
+        # pix_subset = img_pixels[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
+        # Hash clockwise
+
+
+        # Hash clockwise
+        # img_cw = self.__rotate_cv_img__(cw_action, img_pixels)
+        # shapes = img_cw.shape
+        # pix_subset = img_cw[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
+
+        # # hash_cw = hash(
+        # #     self.__rotate_cv_img__(cw_action, img_pixels).tostring()
+        # #     )
+        # # Hash counter-clockwise
+        # img_ccw = self.__rotate_cv_img__(ccw_action, img_pixels)
+        # shapes = img_ccw.shape
+        # pix_subset = img_ccw[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
+
+        # # hash_ccw = hash(
+        # #     self.__rotate_cv_img__(ccw_action, img_pixels).tostring()
+        # #     )
+        # # Hash rotated by 180
+        # img_r180 = self.__rotate_cv_img__(r180_action, img_pixels)
+        # shapes = img_r180.shape
+        # pix_subset = img_r180[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
+        # hash_180 = hash(
+        #     self.__rotate_cv_img__(r180_action, img_pixels).tostring()
+        #     )
+        assert(hash_180 != hash_ccw)
+        assert(hash_ccw != hash_cw)
+        assert(hash_cw != hash_orig)
+
+        # print("Hashing: {}".format(time.time() - s))
 
         # To detect simple rotations, we want the minimum hash. It cuts
         # our hash space somewhat, but collisions are still unlikely. 
@@ -386,3 +534,55 @@ class tableMinder:
         maxhash = max(hash_orig, hash_ccw, hash_cw, hash_180)
         # self.img_hash_val = minhash
         return minhash, maxhash
+
+    def add_hash(self, filename):
+
+        # Check if the file has a hash:
+
+        try:
+            utf_path = filename.encode('utf-8')
+        except UnicodeDecodeError as ude:
+            utf_path = filename
+
+
+        # Get the current action stored in the table -- may be 'none'. 
+        check_hash_query = '''SELECT {big_hash_col}, {small_hash_col} FROM {photo_table} WHERE {full_path_col} = ?'''\
+            .format(photo_table = self.photo_table_name, full_path_col = self.full_path_col,\
+                big_hash_col = self.big_hash_col, small_hash_col = self.small_hash_col)
+
+
+        try:
+            c = self.conn.cursor()
+            currentAction = c.execute(check_hash_query, (utf_path,)).fetchall()[0]
+        except sqlite3.IntegrityError as e:
+            e = str(e)
+            print("Integrity error: {}.".format(e, utf_path))
+        
+        saved_min = currentAction[0]
+        saved_max = currentAction[1]
+
+        if saved_max is None and saved_min is None:
+            s = time.time()
+            try:
+                minhash, maxhash = self.__hash_img__(filename)
+            except AttributeError as ae:
+                print(ae)
+                self.delete_file(filename)
+                return
+            # print(time.time() - s)
+
+            # Update the hashes
+            update_hash_query = '''UPDATE {photo_table} set ({big_hash_col}, {small_hash_col}) = (?, ?) WHERE {full_path_col} = ?'''\
+                .format(photo_table = self.photo_table_name, full_path_col = self.full_path_col,\
+                    big_hash_col = self.big_hash_col, small_hash_col = self.small_hash_col)
+
+            try:
+                c = self.conn.cursor()
+                c.execute(update_hash_query, (maxhash, minhash, utf_path,))
+            except sqlite3.IntegrityError as e:
+                e = str(e)
+                print("Integrity error: {}.".format(e, utf_path))
+
+            self.conn.commit()
+        # else:
+        #     print saved_max
