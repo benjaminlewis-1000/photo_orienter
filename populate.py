@@ -451,6 +451,8 @@ class tableMinder:
         # The hash of the image is the minimum of all these hashes.
         # Useful for determining if an image is the same but rotated. 
 
+        # Corner case: '/mnt/server_photos/Pictures_In_Progress/2018/Family Texts/2018-09-15 19.35.19-4.jpeg'
+
         MINSIZE = 250
         cw_action = self.poss_actions['action_clockwise']
         ccw_action = self.poss_actions['action_ccw']
@@ -460,7 +462,7 @@ class tableMinder:
         img_pixels = cv2.imread(filename)
         # print("Imread: {}".format(time.time() - s))
         # print filename
-        # print(img_pixels.shape)
+        print(img_pixels.shape)
         shapes = img_pixels.shape
         h, w, c = shapes
 
@@ -469,6 +471,8 @@ class tableMinder:
         top_right = img_pixels[:min(h, MINSIZE), -min(w, MINSIZE):, :].copy()
         bottom_left = img_pixels[-min(h, MINSIZE):, :min(w, MINSIZE), :].copy()
         bottom_right = img_pixels[-min(h, MINSIZE):, -min(w, MINSIZE):, :].copy()
+
+        print img_pixels[501:510, 501:510, :]
         # print bottom_left[0, 0, 0]
 
         # img_ccw = self.__rotate_cv_img__(r180_action, img_pixels)
@@ -484,6 +488,9 @@ class tableMinder:
         # print np.array_equal(pixels_180, pix_subset)
         # print bl_rot[0, 0, 0]
         # print pix_subset[0, 0, 0]
+
+        print pixels_cw[0:5,0,0]
+        print pixels_ccw[0:5,0,0]
 
         hash_orig = hash(pixels_no_rot.tostring())
         hash_cw = hash(pixels_cw.tostring())
@@ -522,9 +529,11 @@ class tableMinder:
         # hash_180 = hash(
         #     self.__rotate_cv_img__(r180_action, img_pixels).tostring()
         #     )
-        assert(hash_180 != hash_ccw)
-        assert(hash_ccw != hash_cw)
-        assert(hash_cw != hash_orig)
+        print filename
+        print hash_ccw
+        print hash_orig
+        print hash_cw
+        assert( (hash_180 != hash_ccw) or (hash_ccw != hash_cw) or (hash_cw != hash_orig) )
 
         # print("Hashing: {}".format(time.time() - s))
 
@@ -534,6 +543,17 @@ class tableMinder:
         maxhash = max(hash_orig, hash_ccw, hash_cw, hash_180)
         # self.img_hash_val = minhash
         return minhash, maxhash
+
+def crop_black(cv_img):
+    gray = cv2.cvtColor(cv_img,cv2.COLOR_BGR2GRAY)
+    _,thresh = cv2.threshold(gray,1,255,cv2.THRESH_BINARY)
+    # Now find contours in it. There will be only one object, so find bounding rectangle for it.
+    bbb, contours,hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    cnt = contours[0]
+    x,y,w,h = cv2.boundingRect(cnt)
+    # Now crop the image, and save it into another file.
+    crop = cv_img[y:y+h,x:x+w]
+    return crop
 
     def add_hash(self, filename):
 
