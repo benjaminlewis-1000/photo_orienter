@@ -460,6 +460,7 @@ class tableMinder:
 
         # s = time.time()
         img_pixels = cv2.imread(filename)
+        img_pixels = self.crop_img(img_pixels)
         # print("Imread: {}".format(time.time() - s))
         # print filename
         print(img_pixels.shape)
@@ -497,38 +498,6 @@ class tableMinder:
         hash_ccw = hash(pixels_ccw.tostring())
         hash_180 = hash(pixels_180.tostring())
 
-        # print("Hash: {}".format(time.time() - s))
-        # A small subset of pixels should suffice.
-        # print(img_pixels.shape)
-
-        # shapes = img_pixels.shape
-        # pix_subset = img_pixels[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
-        # Hash clockwise
-
-
-        # Hash clockwise
-        # img_cw = self.__rotate_cv_img__(cw_action, img_pixels)
-        # shapes = img_cw.shape
-        # pix_subset = img_cw[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
-
-        # # hash_cw = hash(
-        # #     self.__rotate_cv_img__(cw_action, img_pixels).tostring()
-        # #     )
-        # # Hash counter-clockwise
-        # img_ccw = self.__rotate_cv_img__(ccw_action, img_pixels)
-        # shapes = img_ccw.shape
-        # pix_subset = img_ccw[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
-
-        # # hash_ccw = hash(
-        # #     self.__rotate_cv_img__(ccw_action, img_pixels).tostring()
-        # #     )
-        # # Hash rotated by 180
-        # img_r180 = self.__rotate_cv_img__(r180_action, img_pixels)
-        # shapes = img_r180.shape
-        # pix_subset = img_r180[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
-        # hash_180 = hash(
-        #     self.__rotate_cv_img__(r180_action, img_pixels).tostring()
-        #     )
         print filename
         print hash_ccw
         print hash_orig
@@ -544,16 +513,50 @@ class tableMinder:
         # self.img_hash_val = minhash
         return minhash, maxhash
 
-def crop_black(cv_img):
-    gray = cv2.cvtColor(cv_img,cv2.COLOR_BGR2GRAY)
-    _,thresh = cv2.threshold(gray,1,255,cv2.THRESH_BINARY)
-    # Now find contours in it. There will be only one object, so find bounding rectangle for it.
-    bbb, contours,hierarchy = cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-    cnt = contours[0]
-    x,y,w,h = cv2.boundingRect(cnt)
-    # Now crop the image, and save it into another file.
-    crop = cv_img[y:y+h,x:x+w]
-    return crop
+    def crop_img(img_array):
+    # Iterative method to remove all-black and all-white bars from all sides
+    # of the image, then return the trimmed image. 
+
+        def __crop_color__(color_value, cv_img):
+            # Sub-method: remove bars that are all of a given color_value.
+            # Written so we don't have to repeat code for black, white, etc. 
+            h,w,c = cv_img.shape
+            # Define the first and last rows, for the purpose
+            # of array access. 
+            firstrow = 0
+            lastrow = h - 1
+            firstcol = 0
+            lastcol = w - 1
+            # If any of the four corners are of the target color, then it's likely that we will 
+            # have bars of that color, and we should iterate. Otherwise, don't bother,
+            # because we clearly have one pixel not of that color in each border column
+            # and row. 
+            if np.all(cv_img[0,0,:] == color_value) or np.all(cv_img[-1, -1,:] == color_value) \
+                or np.all(cv_img[0,-1,:] == color_value) or np.all(cv_img[-1, 0,:] == color_value) :
+                # These four while loops are similar -- take the respective row or 
+                # column, see if all pixels in that vector are of the target color, and
+                # while they are, move the crop in one row/column more. 
+                while np.all(cv_img[firstrow, :, :] == color_value) and firstrow < h - 1:
+                    firstrow += 1
+                while np.all(cv_img[lastrow, :, :] == color_value) and lastrow > 0:
+                    lastrow -= 1
+                while np.all(cv_img[:, firstcol, :] == color_value) and firstcol < w - 1:
+                    firstcol += 1
+                while np.all(cv_img[:, lastcol, :] == color_value) and lastcol > 0:
+                    lastcol -= 1
+            # Due to python indexing, we need to add one to the lastrow and lastcol values. 
+            lastrow = min(lastrow + 1, h)
+            lastcol = min(lastcol + 1, w)
+            # A couple of assert statements 
+            assert firstcol < lastcol
+            assert firstrow < lastrow
+            return cv_img[firstrow:lastrow, firstcol:lastcol]
+        # Crop black boxes, then white boxes. 
+        black_crop = __crop_color__(0, img_array)
+        cropped = __crop_color__(255, black_crop)
+
+        return cropped
+
 
     def add_hash(self, filename):
 

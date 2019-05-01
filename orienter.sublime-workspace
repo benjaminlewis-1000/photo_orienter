@@ -4,6 +4,14 @@
 		"selected_items":
 		[
 			[
+				"bakw",
+				"backward_files_list"
+			],
+			[
+				"back",
+				"backward_files_list"
+			],
+			[
 				"pos",
 				"poss_actions_list"
 			],
@@ -59,8 +67,16 @@
 			"file": "displayer.py",
 			"settings":
 			{
-				"buffer_size": 2693,
+				"buffer_size": 9142,
 				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "dev/photoLoadThreads.py",
+			"settings":
+			{
+				"buffer_size": 763,
 				"line_ending": "Unix"
 			}
 		},
@@ -151,7 +167,9 @@
 	},
 	"expanded_folders":
 	[
-		"/home/lewisbp/snippets/photo_orienter"
+		"/home/lewisbp/snippets/photo_orienter",
+		"/home/lewisbp/snippets/photo_orienter/dev",
+		"/home/lewisbp/snippets/photo_orienter/tests"
 	],
 	"file_history":
 	[
@@ -298,6 +316,14 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"print(",
+			"loaded_img",
+			"Key",
+			"keybo",
+			"self.db_q.put",
+			"self.db_q",
+			"stop_event",
+			"isset",
 			"msg_q",
 			"test_mark_proc"
 		],
@@ -307,6 +333,7 @@
 		"regex": false,
 		"replace_history":
 		[
+			"is_set",
 			"self.msg_q"
 		],
 		"reverse": false,
@@ -327,15 +354,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 2693,
+						"buffer_size": 9142,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								420,
-								420
+								616,
+								616
 							]
 						],
 						"settings":
@@ -354,7 +381,7 @@
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 111.0,
+						"translation.y": 303.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
@@ -362,6 +389,43 @@
 				},
 				{
 					"buffer": 1,
+					"file": "dev/photoLoadThreads.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 763,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"WordCount":
+							{
+								"changes": -1,
+								"modified": true,
+								"selection": true,
+								"status": -1,
+								"syntax": "python"
+							},
+							"git_gutter_is_enabled": true,
+							"syntax": "Packages/Python/Python.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
 					"file": "tester.py",
 					"semi_transient": false,
 					"settings":
@@ -396,11 +460,11 @@
 						"translation.y": 5054.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 2,
+					"stack_index": 3,
 					"type": "text"
 				},
 				{
-					"buffer": 2,
+					"buffer": 3,
 					"file": "populate.py",
 					"semi_transient": false,
 					"settings":
@@ -435,7 +499,7 @@
 						"translation.y": 0.0,
 						"zoom_level": 1.0
 					},
-					"stack_index": 1,
+					"stack_index": 2,
 					"type": "text"
 				}
 			]
@@ -443,7 +507,7 @@
 	],
 	"incremental_find":
 	{
-		"height": 28.0
+		"height": 32.0
 	},
 	"input":
 	{
