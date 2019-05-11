@@ -9,6 +9,7 @@ import xmltodict
 import multithread_walk as mtw
 # UTF encoding for files
 import cv2
+import math
 import numpy as np
 import sys  
 reload(sys)
@@ -73,6 +74,7 @@ class tableMinder:
         cc.execute(get_roots_query)
 
         roots = cc.fetchall()
+        roots = [r[0] for r in roots]
 
         # print roots
 
@@ -194,7 +196,7 @@ class tableMinder:
                 try:
                     minhash, maxhash = self.__hash_img__(utf_path)
                 except AttributeError as ae:
-                    print(ae + utf_path)
+                    print(str(ae) + ' ' +  utf_path)
                     continue
 
                 # Try and see if that hash value is already in the table. 
@@ -205,9 +207,12 @@ class tableMinder:
 
                 if len(hvals) != 0:
                     # Then we just need to update the file name.
-                    previous_path = hvals[0]
+                    previous_path = hvals[0][0]
                     update_table_query = '''UPDATE {photo_table} SET {full_path_col} = ? WHERE {full_path_col} = ?'''\
                         .format(photo_table = self.photo_table_name, full_path_col = self.full_path_col)
+                    # print(update_table_query)
+                    # print utf_path
+                    # print previous_path
                     cc.execute(update_table_query, (utf_path, previous_path))
                     self.conn.commit()
 
@@ -251,6 +256,20 @@ class tableMinder:
 
         return files
 
+    def list_rotated(self):
+        # SQL query to get all the images that do not have the 'reviewed' flag
+        # set on them. 
+        select_query = '''SELECT {full_path_col} FROM {tab_name} WHERE {reviewed_col} = 1 AND {action_col} != "{none_action}"'''\
+        .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col,\
+                action_col = self.action_taken_col, none_action = self.poss_actions['action_none'])
+
+        # Get a cursor, fetch all into a list
+        c = self.conn.cursor()
+        files = c.execute(select_query).fetchall()
+        files = [f[0] for f in files]
+
+        return files
+
     def list_to_delete(self):
         select_query = '''SELECT {full_path_col} FROM {tab_name} WHERE {reviewed_col} = 1 AND {action_col} = "{del_action}"'''\
         .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, reviewed_col=self.reviewed_col,
@@ -259,6 +278,7 @@ class tableMinder:
         # Get a cursor, fetch all into a list
         c = self.conn.cursor()
         files = c.execute(select_query).fetchall()
+        files = [f[0] for f in files]
 
         # files = []
 
@@ -343,11 +363,15 @@ class tableMinder:
                        delete_action:0}
 
         # New action + old action = new action state. 
+        # print init_state
+        if isinstance(init_state, tuple):
+            init_state = init_state[0]
         net_action = action_dict[init_state] + action_dict[subsequent_action] 
         
         # Rescale it to 0-3, where we can use a mod to wrap around, then subtract
         # back out. The math works. 
         net_action = (net_action + 1) % 4 - 1
+
 
         # Special case - if we marked for deletion, then '0' means delete,
         # not none. 
@@ -376,6 +400,8 @@ class tableMinder:
     def mark_processed(self, full_path, action=None):
 
         # Encode the path as a UTF-8 path
+        # print full_path
+        # print action
         try:
             utf_path = full_path.encode('utf-8')
         except UnicodeDecodeError as ude:
@@ -421,6 +447,30 @@ class tableMinder:
 
         self.conn.commit()
 
+    def mark_rotation_good(self, full_path):
+        try:
+            utf_path = full_path.encode('utf-8')
+        except UnicodeDecodeError as ude:
+            utf_path = full_path
+
+        update_query = '''UPDATE {tab_name} SET {action_taken_col}="{none_val}" WHERE {full_path_col}= ? '''\
+            .format(tab_name = self.photo_table_name, full_path_col = self.full_path_col, action_taken_col = self.action_taken_col,\
+            none_val = self.none_action)
+        print update_query
+        print full_path
+
+        # Execute. Rely on the CHECK constraint on the table to reject some of the queries. 
+        try:
+            c = self.conn.cursor()
+            c.execute(update_query, (utf_path,))
+            if self.print_inserts:
+                print("Marked file {} as good rotation".format(utf_path))
+        except sqlite3.IntegrityError as e:
+            e = str(e)
+            print("Integrity error: {}. File \"{}\" not updated.".format(e, utf_path))
+
+        self.conn.commit()
+      
 
     def __rotate_cv_img__(self, rotate_command, img_pixels):
         # Helper function to rotate an OpenCV image. Found it on the internet somewhere,
@@ -463,45 +513,59 @@ class tableMinder:
         img_pixels = self.crop_img(img_pixels)
         # print("Imread: {}".format(time.time() - s))
         # print filename
-        print(img_pixels.shape)
+        # print(img_pixels.shape)
         shapes = img_pixels.shape
         h, w, c = shapes
 
         # s = time.time()
-        top_left = img_pixels[:min(h, MINSIZE), :min(w, MINSIZE), :]
+        top_left = img_pixels[:min(h, MINSIZE), :min(w, MINSIZE), :].copy()
         top_right = img_pixels[:min(h, MINSIZE), -min(w, MINSIZE):, :].copy()
         bottom_left = img_pixels[-min(h, MINSIZE):, :min(w, MINSIZE), :].copy()
         bottom_right = img_pixels[-min(h, MINSIZE):, -min(w, MINSIZE):, :].copy()
 
-        print img_pixels[501:510, 501:510, :]
+
+        h_2 = int(math.floor(h/2))
+        w_2 = int(math.floor(w/2))
+        # print (h_2-10)
+        # print (h_2+10)
+        # print (w_2-10)
+        # print (w_2+10)
+        C_EX = 50 # Center extent
+        center_pixels = img_pixels[(h_2-C_EX):(h_2+C_EX), (w_2-C_EX):(w_2+C_EX), :]
+
         # print bottom_left[0, 0, 0]
 
         # img_ccw = self.__rotate_cv_img__(r180_action, img_pixels)
         # pix_subset = img_ccw[:min(shapes[0], MINSIZE), :min(shapes[1], MINSIZE), :]
         # Top pixels when rotated clockwise
         pixels_cw = self.__rotate_cv_img__(cw_action, bottom_left)
+        center_cw = self.__rotate_cv_img__(cw_action, center_pixels)
         # Top pixels when rotated counter-clockwise
         pixels_ccw = self.__rotate_cv_img__(ccw_action, top_right)
+        center_ccw = self.__rotate_cv_img__(ccw_action, center_pixels)
         # Top pixels, no rotation
         pixels_no_rot = top_left
+        center_no_rot = center_pixels
         # Top pixels when rotated 180 degrees
         pixels_180 = self.__rotate_cv_img__(r180_action, bottom_right)
+        center_180 = self.__rotate_cv_img__(r180_action, center_pixels)
         # print np.array_equal(pixels_180, pix_subset)
         # print bl_rot[0, 0, 0]
         # print pix_subset[0, 0, 0]
 
-        print pixels_cw[0:5,0,0]
-        print pixels_ccw[0:5,0,0]
+        # print pixels_cw[0:5,0,0]
+        # print pixels_ccw[0:5,0,0]
 
-        hash_orig = hash(pixels_no_rot.tostring())
-        hash_cw = hash(pixels_cw.tostring())
-        hash_ccw = hash(pixels_ccw.tostring())
-        hash_180 = hash(pixels_180.tostring())
-
-        print filename
-        print hash_ccw
-        print hash_orig
-        print hash_cw
+        hash_orig = int( hash(pixels_no_rot.tostring()) + hash(center_no_rot.tostring()) ) * 8
+        hash_cw = int( hash(pixels_cw.tostring()) + hash(center_cw.tostring()) ) * 8
+        hash_ccw = int( hash(pixels_ccw.tostring()) + hash(center_ccw.tostring()) ) * 8
+        hash_180 = int( hash(pixels_180.tostring()) + hash(center_180.tostring()) ) * 8
+        # print hash_ccw    
+        hash_orig = int( (hash_orig & 0xFFFFFFFFFFFF) * np.sign(hash_orig) )
+        hash_cw = int( (hash_cw & 0xFFFFFFFFFFFF) * np.sign(hash_cw) )
+        hash_ccw = int( (hash_ccw & 0xFFFFFFFFFFFF) * np.sign(hash_ccw) )
+        hash_180 = int( (hash_180 & 0xFFFFFFFFFFFF) * np.sign(hash_180) )
+        # print hash_cw
         assert( (hash_180 != hash_ccw) or (hash_ccw != hash_cw) or (hash_cw != hash_orig) )
 
         # print("Hashing: {}".format(time.time() - s))
@@ -510,10 +574,12 @@ class tableMinder:
         # our hash space somewhat, but collisions are still unlikely. 
         minhash = min(hash_orig, hash_ccw, hash_cw, hash_180)
         maxhash = max(hash_orig, hash_ccw, hash_cw, hash_180)
+        # print minhash
+        # print maxhash
         # self.img_hash_val = minhash
         return minhash, maxhash
 
-    def crop_img(img_array):
+    def crop_img(self, img_array):
     # Iterative method to remove all-black and all-white bars from all sides
     # of the image, then return the trimmed image. 
 

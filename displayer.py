@@ -17,15 +17,47 @@ from populate import tableMinder
 import argparse
 
 
-imgs = ['tests/byu.jpg', 'tests/byu_left.jpg', 'tests/byu_right.jpg', 'tests/byu_180.jpg']
 
-# print msg_q
+# A program to view images with functions for rotation and marking for deletion from the dataset.
+# Rotation functionality and full deletion functionality are mutually exclusive -- you can only
+# launch the program so that it can rotate and mark for deletion, or else it can read the 
+# images marked for deletion and allow those to be deleted. 
+
+# The program is launched with 'python2 displayer.py (args)'. Allowable arguments include:
+# - None -- the program simply launches for rotation mode
+# -d or --delete_photos -- delete photos that were previously marked for deletion
+# -c or --cleanup -- read through all the photos marked for deletion and see if they are still 
+#       on disk. If they are not on disk, they are removed from the database
+# -v or --validate -- validate photos that have been rotated. 
+
+# In viewing mode, there are several commands that are used to navigate the program:
+# - 'a' or left arrow -- go back
+# - 'd' or right arrow -- advance
+# - '9' -- mark for deletion
+# '[' -- rotate image counter-clockwise
+# ']' -- rotate image clockwise
+# '=' or '+' -- rotate image 180 degrees
+# 'v' (validate mode only) -- validate that image has been rotated correctly
+# 'x' (delete mode only) -- delete image from the file system
+# 'r' (delete mode only) -- restore image that was deleted. 
+# -:::- Note with deletion and restore -- the backwards queue has a (parameterizable) buffer
+# -:::- that is currently set to 20. If you try to go back more than that, it will throw an error,
+# -:::- so make sure that you restore images before you advance too much. 
+# -:::- Deleting an image will simply move it to the /tmp directory on your computer, so there's still
+# -:::- that safety buffer.
+
+# This class is built to load and display images from an instance of populate.py's TableMinder.
+# It is multi-threaded. One thread handles displaying images. A parameterizable number of threads
+# read images from disk storage, which is ideal if the images are on the network. Another
+# thread handles interacting with the database. Communications between threads are handled by 
+# Queues. 
+
+
+# On initialization, the program read
 
 class keyLoggerDisplay():
     """docstring for keyLoggerDisplay"""
     def __init__(self, args):
-        # super(keyLoggerDisplay, self).__init__()
-        # self.arg = arg
         self.msg_q = Queue.Queue()
         self.db_q= Queue.Queue()
 
@@ -63,6 +95,11 @@ class keyLoggerDisplay():
             print(len(self.list_of_files))
             self.num_files = len(self.list_of_files)
             self.delete_allowed = True
+        elif args.validate:
+            print('validate')
+            self.list_of_files = self.db_class.list_rotated()
+            print(len(self.list_of_files))
+            self.num_files = len(self.list_of_files )
 
         else:
             self.list_of_files = self.db_class.list_unprocessed()
@@ -94,7 +131,7 @@ class keyLoggerDisplay():
         self.stop_event = threading.Event()
 
         for algo in [self.threadListen]:
-            t = threading.Thread(target=algo)
+            t = threading.Thread(target=algo, args=(args,))
             self.threads.append(t)
             t.start()
 
@@ -147,10 +184,13 @@ class keyLoggerDisplay():
         while not self.stop_event.is_set():
             if not self.db_q.empty():
                 item = self.db_q.get()
-                file, action = item
+                file, action, validate = item
                 # print("Processing file {}".format(file))
 
-                self.db_class.mark_processed(file, action)
+                if not validate:
+                    self.db_class.mark_processed(file, action)
+                else:
+                    self.db_class.mark_rotation_good(file)
                 
                 # sleep(0.5)
         print("Database handler stopped")
@@ -172,7 +212,7 @@ class keyLoggerDisplay():
                 on_release=self.on_release) as listener:
             listener.join()
 
-    def threadListen(self):
+    def threadListen(self, args):
 
         # Checklist - going back, then forward, should load an image
         # as it has been altered - not as it was pushed in the queue. 
@@ -182,7 +222,7 @@ class keyLoggerDisplay():
         backward_dict_list = deque()
         backward_files_list = deque()
 
-        def __advanceImage__(current_img_object):
+        def __advanceImage__(current_img_object, validate=False):
 
             def push_back():
                 # A function that only pushes things back if we are 
@@ -192,7 +232,7 @@ class keyLoggerDisplay():
                     back_popped = backward_dict_list.popleft()
                     back_file = back_popped['file']
                     backward_files_list.append(back_file)
-                self.db_q.put([current_img_object['file'], None])
+                self.db_q.put([current_img_object['file'], None, validate])
 
             next_loaded = False
             if len(forward_dict_list) == 0:
@@ -282,7 +322,7 @@ class keyLoggerDisplay():
                 else:
                     # Tell the database to take care of the current image 
                     # before we change it
-                    self.db_q.put([current_img_object['file'], None])
+                    self.db_q.put([current_img_object['file'], None, False])
                     # Put the current image on the forward list.
                     forward_dict_list.appendleft(current_img_object)
                     try:
@@ -304,7 +344,11 @@ class keyLoggerDisplay():
                 # Push to backward lists
                 # print(current_img_object['file'])
                 # print(current_img_object['image'][0][0])
-                current_img_object = __advanceImage__(current_img_object)
+                current_img_object = __advanceImage__(current_img_object, validate = False)
+
+            elif item_char == 'v' and args.validate: # Validate
+                # Push to backward lists
+                current_img_object = __advanceImage__(current_img_object, validate = True)
 
             elif item_char == 'x':
                 fname = current_img_object['file']
@@ -326,7 +370,7 @@ class keyLoggerDisplay():
                         print("No such file: {}".format(fname))
                     except OSError as ioe:
                         print("No such file: {}".format(fname))
-                    current_img_object = __advanceImage__(current_img_object)
+                    current_img_object = __advanceImage__(current_img_object, validate = False)
                 else:
                     print("Deletion not allowed in this context")
 
@@ -347,15 +391,15 @@ class keyLoggerDisplay():
 
             elif item_char == 't' or item_char == '9':
                 # 't' for 'trash' or 'delete'
-                self.db_q.put([current_img_object['file'], self.delete_action])
-                current_img_object = __advanceImage__(current_img_object)
+                self.db_q.put([current_img_object['file'], self.delete_action, False])
+                current_img_object = __advanceImage__(current_img_object, validate = False)
 
 
             elif item_char == '[':
                 # Rotate CCW
                 st = time.time()
                 filename = current_img_object['file']
-                self.db_q.put([filename, self.ccw_action])
+                self.db_q.put([filename, self.ccw_action, False])
                 rotate_file(filename, 'left')
                 img = __rotate_loaded__(current_img_object['image'], self.ccw_action)
                 # img = cv2.imread(filename)
@@ -370,7 +414,7 @@ class keyLoggerDisplay():
                 # Rotate CW
                 st = time.time()
                 filename = current_img_object['file']
-                self.db_q.put([filename, self.clockwise_action])
+                self.db_q.put([filename, self.clockwise_action, False])
                 rotate_file(filename, 'right')
                 img = __rotate_loaded__(current_img_object['image'], self.clockwise_action)
                 # img = cv2.imread(filename)
@@ -383,7 +427,7 @@ class keyLoggerDisplay():
 
             elif item_char == '=' or item_char == '+':
                 filename = current_img_object['file']
-                self.db_q.put([filename, self.r180_action])
+                self.db_q.put([filename, self.r180_action, False])
                 # file = self.list_of_files[i % self.num_files]
                 rotate_file(filename, '180')
                 img = __rotate_loaded__(current_img_object['image'], self.r180_action)
@@ -400,11 +444,13 @@ class keyLoggerDisplay():
 
         cv2.destroyWindow('image')
         print("Listener thread stopped")
+# imgs = ['tests/byu.jpg', 'tests/byu_left.jpg', 'tests/byu_right.jpg', 'tests/byu_180.jpg']
 
 
 parser = argparse.ArgumentParser(description="Python to orient photos")
 parser.add_argument('-d', '--delete_photos', action='store_true', help='Verify deletions')
-parser.add_argument('-c', '--cleanup', action='store_true', help='Verify deletions')
+parser.add_argument('-c', '--cleanup', action='store_true', help='Clean-up deletions')
+parser.add_argument('-v', '--validate', action='store_true', help='Verify rotations')
 # parser.add_argument('--root', help='Root in which to search for JPG files')
 # parser.add_argument('--update_db', action="store_true", help='Update the database')
 
